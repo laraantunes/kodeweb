@@ -25,11 +25,6 @@
     <!-- Outer Browser Window Outline -->
     <rect x="56" y="56" width="400" height="400" rx="40" fill="none" stroke="rgba(189, 0, 255, 0.15)" stroke-width="4" />
     
-    <!-- Window Control Buttons (macOS style) -->
-    <circle cx="96" cy="96" r="10" fill="#ff0055" opacity="0.85"/>
-    <circle cx="126" cy="96" r="10" fill="#ffaa00" opacity="0.85"/>
-    <circle cx="156" cy="96" r="10" fill="#00ff88" opacity="0.85"/>
-    
     <!-- Code Editor Brackets (Neon effects) -->
     <!-- Left bracket < (Purple glow) -->
     <path d="M 125 190 L 75 256 L 125 322" fill="none" stroke="#bd00ff" stroke-width="14" stroke-linecap="round" stroke-linejoin="round" filter="url(#glow)"/>
