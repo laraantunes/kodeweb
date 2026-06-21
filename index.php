@@ -360,7 +360,7 @@
 
                 <div class="form-group" id="group-database">
                     <label class="form-label" id="label-database" for="db-database">Nome do Banco</label>
-                    <input type="text" class="form-input" id="db-database" placeholder="meu_banco" required>
+                    <input type="text" class="form-input" id="db-database" placeholder="meu_banco">
                 </div>
 
                 <div class="form-actions">

@@ -715,12 +715,15 @@ function toggleDbConnectionFields() {
     document.getElementById('group-password').classList.toggle('hidden', isSQLite);
     
     const dbLabel = document.getElementById('label-database');
+    const dbInput = document.getElementById('db-database');
     if (isSQLite) {
         dbLabel.textContent = 'Caminho do Arquivo SQLite (relativo ao workspace)';
-        document.getElementById('db-database').placeholder = 'db/database.sqlite';
+        dbInput.placeholder = 'db/database.sqlite';
+        dbInput.required = true;
     } else {
-        dbLabel.textContent = 'Nome do Banco de Dados';
-        document.getElementById('db-database').placeholder = 'meu_banco';
+        dbLabel.textContent = 'Nome do Banco de Dados (Opcional)';
+        dbInput.placeholder = 'meu_banco';
+        dbInput.required = false;
     }
 }
 

@@ -52,12 +52,20 @@ function get_pdo_connection($connection_id, $database_override = null) {
     
     $dsn = '';
     if ($driver === 'mysql') {
-        $dsn = "mysql:host=$host;dbname=$database;charset=utf8mb4";
+        if ($database !== null && $database !== '') {
+            $dsn = "mysql:host=$host;dbname=$database;charset=utf8mb4";
+        } else {
+            $dsn = "mysql:host=$host;charset=utf8mb4";
+        }
         if (!empty($port)) {
             $dsn .= ";port=$port";
         }
     } elseif ($driver === 'pgsql') {
-        $dsn = "pgsql:host=$host;dbname=$database";
+        if ($database !== null && $database !== '') {
+            $dsn = "pgsql:host=$host;dbname=$database";
+        } else {
+            $dsn = "pgsql:host=$host";
+        }
         if (!empty($port)) {
             $dsn .= ";port=$port";
         }
