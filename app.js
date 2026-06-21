@@ -291,6 +291,16 @@ async function loadFiles(path = '', container = document.getElementById('file-tr
             nameSpan.textContent = file.name;
             row.appendChild(nameSpan);
             
+            // Context Menu Button (3 dots)
+            const contextMenuBtn = document.createElement('span');
+            contextMenuBtn.className = 'tree-context-menu-btn';
+            contextMenuBtn.textContent = '⋮';
+            contextMenuBtn.addEventListener('click', (e) => {
+                e.stopPropagation();
+                showTreeContextMenu(e, row.dataset.path, file.name);
+            });
+            row.appendChild(contextMenuBtn);
+            
             li.appendChild(row);
             
             if (file.is_dir) {
@@ -346,6 +356,55 @@ function toggleFolder(row, subUl) {
     } else {
         subUl.classList.add('hidden');
         arrow.textContent = '▶';
+    }
+}
+
+function showTreeContextMenu(e, path, name) {
+    let menu = document.getElementById('tree-context-menu');
+    if (!menu) {
+        menu = document.createElement('div');
+        menu.id = 'tree-context-menu';
+        menu.className = 'tree-context-menu';
+        menu.innerHTML = `
+            <div class="tree-context-menu-item" id="ctx-rename">✏️ Renomear</div>
+            <div class="tree-context-menu-item danger" id="ctx-delete">❌ Excluir</div>
+        `;
+        document.body.appendChild(menu);
+        
+        document.addEventListener('click', (event) => {
+            if (event.target !== menu && !menu.contains(event.target)) {
+                menu.classList.remove('active');
+            }
+        });
+    }
+
+    document.getElementById('ctx-rename').onclick = () => {
+        menu.classList.remove('active');
+        showPrompt("Renomear Item", "Digite o novo nome:", name, (newName) => {
+            if (newName && newName !== name) {
+                renameNode(path, newName);
+            }
+        });
+    };
+    
+    document.getElementById('ctx-delete').onclick = () => {
+        menu.classList.remove('active');
+        showConfirm(`Deseja realmente remover permanentemente: ${name}?`, () => {
+            deleteNode(path);
+        });
+    };
+
+    menu.classList.add('active');
+    
+    menu.style.left = `${e.clientX}px`;
+    menu.style.top = `${e.clientY}px`;
+    
+    const rect = menu.getBoundingClientRect();
+    if (rect.right > window.innerWidth) {
+        menu.style.left = `${e.clientX - rect.width}px`;
+    }
+    if (rect.bottom > window.innerHeight) {
+        menu.style.top = `${e.clientY - rect.height}px`;
     }
 }
 

@@ -420,6 +420,65 @@ body {
     text-overflow: ellipsis;
 }
 
+.tree-context-menu-btn {
+    opacity: 0;
+    cursor: pointer;
+    padding: 0 4px;
+    margin-left: auto;
+    color: var(--text-muted);
+    font-size: 14px;
+    font-weight: bold;
+    border-radius: 3px;
+    transition: opacity 0.2s, background-color 0.2s;
+}
+
+.tree-row:hover .tree-context-menu-btn,
+.tree-row.active-file .tree-context-menu-btn {
+    opacity: 1;
+}
+
+.tree-context-menu-btn:hover {
+    background-color: var(--bg-hover);
+    color: var(--text-active);
+}
+
+.tree-context-menu {
+    position: fixed;
+    background-color: var(--bg-secondary);
+    border: 1px solid var(--border-color);
+    border-radius: 4px;
+    box-shadow: 0 4px 15px rgba(0, 0, 0, 0.5);
+    z-index: 10000;
+    display: none;
+    flex-direction: column;
+    padding: 4px 0;
+    min-width: 140px;
+}
+
+.tree-context-menu.active {
+    display: flex;
+}
+
+.tree-context-menu-item {
+    padding: 8px 16px;
+    cursor: pointer;
+    color: var(--text-primary);
+    font-size: 13px;
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    transition: background-color 0.2s;
+}
+
+.tree-context-menu-item:hover {
+    background-color: var(--bg-hover);
+}
+
+.tree-context-menu-item.danger:hover {
+    background-color: var(--accent-error);
+    color: white;
+}
+
 /* Terminal Panel styling */
 .terminal-panel {
     background-color: #07010e; /* Darker deep violet background */
