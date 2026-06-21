@@ -1,0 +1,19 @@
+# Enable basic authentication
+AuthType Basic
+AuthName "KodeWeb IDE Protected Area"
+AuthUserFile /srv/http/kodeweb/.htpasswd
+Require valid-user
+
+# Disable directory listing
+Options -Indexes
+
+# Block direct access to configuration/key files
+<FilesMatch "^\.(htpasswd|key)$">
+    <IfModule mod_authz_core.c>
+        Require all denied
+    </IfModule>
+    <IfModule !mod_authz_core.c>
+        Order allow,deny
+        Deny from all
+    </IfModule>
+</FilesMatch>
