@@ -13,7 +13,19 @@ const state = {
     editor: null,
     allFiles: null,
     searchSelectedIndex: -1,
-    searchFilteredResults: []
+    searchFilteredResults: [],
+    dbExplorer: {
+        activeTab: 'data', // 'data' or 'structure'
+        selectedDb: null,
+        selectedTable: null,
+        activeDriver: 'mysql',
+        tableColumns: [],
+        tableData: [],
+        currentPage: 1,
+        limit: 5,
+        baseQuery: '',
+        currentQuery: ''
+    }
 };
 
 // Initialize the Application
@@ -407,22 +419,38 @@ function activateTab(path) {
         tab.classList.toggle('active', tab.dataset.path === path);
     });
     
-    // Swap Ace session
     const tabInfo = state.openTabs[path];
-    state.editor.setSession(tabInfo.session);
-    state.editor.focus();
     
     // Update breadcrumb
-    updateBreadcrumb(path);
+    updateBreadcrumb(path === 'db_explorer' ? 'Explorador de Banco de Dados' : path);
     
-    // Hide placeholder
-    document.getElementById('no-file-placeholder').classList.add('hidden');
-    document.getElementById('editor').classList.remove('hidden');
+    if (path === 'db_explorer') {
+        // Hide editor and placeholder
+        document.getElementById('no-file-placeholder').classList.add('hidden');
+        document.getElementById('editor').classList.add('hidden');
+        
+        // Show db explorer
+        document.getElementById('db-explorer-container').classList.remove('hidden');
+        
+        // Sync connections dropdown
+        syncDbExplorerConnections();
+    } else {
+        // Hide db explorer
+        document.getElementById('db-explorer-container').classList.add('hidden');
+        
+        // Swap Ace session
+        state.editor.setSession(tabInfo.session);
+        state.editor.focus();
+        
+        // Hide placeholder, show editor
+        document.getElementById('no-file-placeholder').classList.add('hidden');
+        document.getElementById('editor').classList.remove('hidden');
+    }
 }
 
 function closeTab(path) {
     const tabInfo = state.openTabs[path];
-    if (tabInfo.isDirty) {
+    if (tabInfo && tabInfo.isDirty) {
         showConfirm(`O arquivo "${tabInfo.name}" possui alterações não salvas. Deseja realmente fechar?`, () => {
             proceedCloseTab(path);
         });
@@ -447,6 +475,7 @@ function proceedCloseTab(path) {
             state.activeTabPath = null;
             document.getElementById('no-file-placeholder').classList.remove('hidden');
             document.getElementById('editor').classList.add('hidden');
+            document.getElementById('db-explorer-container').classList.add('hidden');
             updateBreadcrumb('');
         }
     }
@@ -936,6 +965,51 @@ function initEventListeners() {
     document.getElementById('form-db-connection').addEventListener('submit', saveDbConnection);
     document.getElementById('execute-query-btn').addEventListener('click', executeSqlQuery);
     
+    // Database Explorer listeners
+    document.getElementById('btn-explore-db').addEventListener('click', openDbExplorer);
+    document.getElementById('db-explorer-connection-select').addEventListener('change', (e) => {
+        loadDbExplorerTree(e.target.value);
+    });
+    document.getElementById('db-explorer-refresh-btn').addEventListener('click', () => {
+        const connId = document.getElementById('db-explorer-connection-select').value;
+        if (connId) {
+            loadDbExplorerTree(connId);
+        }
+    });
+    
+    // Tab switching in Explorer
+    document.getElementById('db-tab-data-btn').addEventListener('click', () => switchDbTab('data'));
+    document.getElementById('db-tab-structure-btn').addEventListener('click', () => switchDbTab('structure'));
+    
+    // Run query / pagination in Explorer
+    document.getElementById('db-data-run-query-btn').addEventListener('click', () => {
+        state.dbExplorer.currentPage = 1;
+        fetchTableData();
+    });
+    document.getElementById('db-data-search-query').addEventListener('keydown', (e) => {
+        if (e.key === 'Enter') {
+            state.dbExplorer.currentPage = 1;
+            fetchTableData();
+        }
+    });
+    document.getElementById('db-pagination-prev-btn').addEventListener('click', () => {
+        if (state.dbExplorer.currentPage > 1) {
+            state.dbExplorer.currentPage--;
+            fetchTableData();
+        }
+    });
+    document.getElementById('db-pagination-next-btn').addEventListener('click', () => {
+        state.dbExplorer.currentPage++;
+        fetchTableData();
+    });
+    
+    // Actions in Explorer
+    document.getElementById('db-data-add-row-btn').addEventListener('click', openAddDbRowModal);
+    document.getElementById('form-db-row').addEventListener('submit', saveDbRowSubmit);
+    
+    document.getElementById('db-structure-add-column-btn').addEventListener('click', openAddDbColumnModal);
+    document.getElementById('form-db-column').addEventListener('submit', saveDbColumnSubmit);
+    
     // Help button and modal controls
     document.getElementById('help-btn').addEventListener('click', () => {
         document.getElementById('modal-help').classList.add('active');
@@ -1405,3 +1479,756 @@ function escapeRegExp(string) {
 }
 
 window.toggleGlobalSearchModal = toggleGlobalSearchModal;
+
+// Database Explorer implementation
+function openDbExplorer() {
+    const path = 'db_explorer';
+    const name = '🗄️ Explorador DB';
+    
+    if (!state.openTabs[path]) {
+        state.openTabs[path] = {
+            path: path,
+            name: name,
+            isSpecial: true
+        };
+        createTabUI(path, name);
+    }
+    activateTab(path);
+}
+
+async function syncDbExplorerConnections() {
+    const select = document.getElementById('db-explorer-connection-select');
+    const currentValue = select.value;
+    
+    try {
+        const response = await fetch('api.php?action=db_connections_list');
+        const data = await response.json();
+        
+        if (data.success) {
+            select.innerHTML = '<option value="">Selecione uma conexão...</option>';
+            data.connections.forEach(conn => {
+                const opt = document.createElement('option');
+                opt.value = conn.id;
+                opt.textContent = `${conn.name} (${conn.driver.toUpperCase()})`;
+                select.appendChild(opt);
+            });
+            
+            // Restore previous or select current active connection
+            if (currentValue && data.connections.some(c => c.id === currentValue)) {
+                select.value = currentValue;
+            } else if (state.activeConnectionId && data.connections.some(c => c.id === state.activeConnectionId)) {
+                select.value = state.activeConnectionId;
+                loadDbExplorerTree(state.activeConnectionId);
+            }
+        }
+    } catch (err) {
+        console.error("Erro ao sincronizar conexões no explorador:", err);
+    }
+}
+
+async function loadDbExplorerTree(connId) {
+    const root = document.getElementById('db-tree-root');
+    if (!connId) {
+        root.innerHTML = '<li style="color: var(--text-muted); font-size:12px; text-align:center; padding-top:20px;">Selecione uma conexão para listar os bancos.</li>';
+        document.getElementById('db-table-view-container').classList.add('hidden');
+        document.getElementById('db-explorer-empty-placeholder').classList.remove('hidden');
+        return;
+    }
+    
+    root.innerHTML = '<li style="color: var(--text-muted); font-size:12px; text-align:center; padding-top:20px;">Carregando bancos de dados...</li>';
+    
+    try {
+        const response = await fetch(`api.php?action=db_list_databases&connection_id=${connId}`);
+        const data = await response.json();
+        
+        if (data.success) {
+            root.innerHTML = '';
+            state.dbExplorer.activeDriver = data.driver;
+            
+            data.databases.forEach(db => {
+                const li = document.createElement('li');
+                li.className = 'tree-node';
+                
+                const row = document.createElement('div');
+                row.className = 'tree-row';
+                row.dataset.db = db;
+                row.dataset.type = 'database';
+                
+                // Arrow
+                const arrow = document.createElement('span');
+                arrow.className = 'tree-arrow';
+                arrow.textContent = '▶';
+                row.appendChild(arrow);
+                
+                // Icon
+                const icon = document.createElement('span');
+                icon.className = 'tree-icon';
+                icon.textContent = '🗄️';
+                row.appendChild(icon);
+                
+                // Name
+                const nameSpan = document.createElement('span');
+                nameSpan.className = 'tree-name';
+                nameSpan.textContent = db;
+                row.appendChild(nameSpan);
+                
+                li.appendChild(row);
+                
+                // Sub list for tables
+                const subUl = document.createElement('ul');
+                subUl.className = 'file-tree hidden';
+                li.appendChild(subUl);
+                
+                row.addEventListener('click', (e) => {
+                    e.stopPropagation();
+                    // Select tree node style
+                    document.querySelectorAll('#db-tree-root .tree-row').forEach(r => r.classList.remove('active-file'));
+                    row.classList.add('active-file');
+                    
+                    toggleExplorerDatabaseNode(row, subUl, connId);
+                });
+                
+                root.appendChild(li);
+            });
+        } else {
+            root.innerHTML = `<li style="color: var(--accent-error); font-size:12px; text-align:center; padding-top:20px; padding-left:10px; padding-right:10px;">Erro: ${escapeHTML(data.message)}</li>`;
+        }
+    } catch (err) {
+        root.innerHTML = `<li style="color: var(--accent-error); font-size:12px; text-align:center; padding-top:20px;">Falha de rede: ${escapeHTML(err.message)}</li>`;
+    }
+}
+
+async function toggleExplorerDatabaseNode(row, subUl, connId) {
+    const arrow = row.querySelector('.tree-arrow');
+    const isCollapsed = subUl.classList.contains('hidden');
+    const dbName = row.dataset.db;
+    
+    if (isCollapsed) {
+        subUl.classList.remove('hidden');
+        arrow.textContent = '▼';
+        
+        subUl.innerHTML = '<li style="color: var(--text-muted); font-size:11px; padding: 4px 20px;">Carregando tabelas...</li>';
+        
+        try {
+            const response = await fetch(`api.php?action=db_list_tables&connection_id=${connId}&database=${encodeURIComponent(dbName)}`);
+            const data = await response.json();
+            
+            if (data.success) {
+                subUl.innerHTML = '';
+                if (data.tables.length === 0) {
+                    subUl.innerHTML = '<li style="color: var(--text-muted); font-size:11px; padding: 4px 20px; font-style:italic;">Sem tabelas</li>';
+                    return;
+                }
+                
+                data.tables.forEach(table => {
+                    const li = document.createElement('li');
+                    li.className = 'tree-node';
+                    
+                    const tRow = document.createElement('div');
+                    tRow.className = 'tree-row';
+                    tRow.dataset.db = dbName;
+                    tRow.dataset.table = table;
+                    tRow.dataset.type = 'table';
+                    
+                    // Indent
+                    const indent = document.createElement('span');
+                    indent.className = 'tree-indent';
+                    tRow.appendChild(indent);
+                    
+                    // Empty space instead of arrow
+                    const arrowSpace = document.createElement('span');
+                    arrowSpace.className = 'tree-arrow';
+                    tRow.appendChild(arrowSpace);
+                    
+                    // Icon
+                    const icon = document.createElement('span');
+                    icon.className = 'tree-icon';
+                    icon.textContent = '📋';
+                    tRow.appendChild(icon);
+                    
+                    // Name
+                    const nameSpan = document.createElement('span');
+                    nameSpan.className = 'tree-name';
+                    nameSpan.textContent = table;
+                    tRow.appendChild(nameSpan);
+                    
+                    li.appendChild(tRow);
+                    
+                    tRow.addEventListener('click', (e) => {
+                        e.stopPropagation();
+                        document.querySelectorAll('#db-tree-root .tree-row').forEach(r => r.classList.remove('active-file'));
+                        tRow.classList.add('active-file');
+                        
+                        loadTableDetails(dbName, table);
+                    });
+                    
+                    subUl.appendChild(li);
+                });
+            } else {
+                subUl.innerHTML = `<li style="color: var(--accent-error); font-size:11px; padding: 4px 20px;">Erro: ${escapeHTML(data.message)}</li>`;
+            }
+        } catch (err) {
+            subUl.innerHTML = `<li style="color: var(--accent-error); font-size:11px; padding: 4px 20px;">Falha: ${escapeHTML(err.message)}</li>`;
+        }
+    } else {
+        subUl.classList.add('hidden');
+        arrow.textContent = '▶';
+    }
+}
+
+function loadTableDetails(dbName, tableName) {
+    state.dbExplorer.selectedDb = dbName;
+    state.dbExplorer.selectedTable = tableName;
+    state.dbExplorer.currentPage = 1;
+    
+    document.getElementById('db-table-title').textContent = `${dbName}.${tableName}`;
+    
+    // Set default select query
+    let quote = '`';
+    if (state.dbExplorer.activeDriver === 'pgsql') quote = '"';
+    
+    const queryInput = document.getElementById('db-data-search-query');
+    queryInput.value = `SELECT * FROM ${quote}${tableName}${quote} LIMIT 5;`;
+    
+    // Switch to data tab by default
+    switchDbTab('data');
+    
+    document.getElementById('db-explorer-empty-placeholder').classList.add('hidden');
+    document.getElementById('db-table-view-container').classList.remove('hidden');
+    
+    fetchTableData();
+    fetchTableStructure();
+}
+
+function switchDbTab(tabName) {
+    state.dbExplorer.activeTab = tabName;
+    
+    document.getElementById('db-tab-data-btn').classList.toggle('active', tabName === 'data');
+    document.getElementById('db-tab-structure-btn').classList.toggle('active', tabName === 'structure');
+    
+    document.getElementById('db-tab-data-content').classList.toggle('hidden', tabName !== 'data');
+    document.getElementById('db-tab-structure-content').classList.toggle('hidden', tabName !== 'structure');
+}
+
+function paginateQuery(sql, page, limit) {
+    let cleanSql = sql.trim();
+    if (cleanSql.endsWith(';')) {
+        cleanSql = cleanSql.slice(0, -1).trim();
+    }
+    
+    // Regex for LIMIT and OFFSET
+    const limitRegex = /\bLIMIT\s+(\d+)/i;
+    const offsetRegex = /\bOFFSET\s+(\d+)/i;
+    
+    let currentLimit = limit;
+    const limitMatch = cleanSql.match(limitRegex);
+    if (limitMatch) {
+        currentLimit = parseInt(limitMatch[1], 10);
+    } else {
+        cleanSql += ` LIMIT ${currentLimit}`;
+    }
+    state.dbExplorer.limit = currentLimit;
+    
+    const offset = (page - 1) * currentLimit;
+    
+    const offsetMatch = cleanSql.match(offsetRegex);
+    if (offsetMatch) {
+        if (offset > 0) {
+            cleanSql = cleanSql.replace(offsetRegex, `OFFSET ${offset}`);
+        } else {
+            cleanSql = cleanSql.replace(/\s+OFFSET\s+\d+/i, '');
+        }
+    } else if (offset > 0) {
+        cleanSql += ` OFFSET ${offset}`;
+    }
+    
+    return cleanSql + ';';
+}
+
+async function fetchTableData() {
+    const connId = document.getElementById('db-explorer-connection-select').value;
+    if (!connId || !state.dbExplorer.selectedTable) return;
+    
+    const rawQuery = document.getElementById('db-data-search-query').value.trim();
+    if (!rawQuery) return;
+    
+    const paginatedQuery = paginateQuery(rawQuery, state.dbExplorer.currentPage, state.dbExplorer.limit);
+    document.getElementById('db-data-search-query').value = paginatedQuery;
+    
+    const gridContainer = document.getElementById('db-data-grid-container');
+    gridContainer.innerHTML = '<div style="padding:20px; color:var(--text-muted); text-align:center;">Buscando registros...</div>';
+    
+    // Disable/Enable pagination buttons
+    document.getElementById('db-pagination-prev-btn').disabled = state.dbExplorer.currentPage === 1;
+    document.getElementById('db-pagination-next-btn').disabled = true; // Wait for response to decide
+    
+    const formData = new FormData();
+    formData.append('action', 'db_query_execute');
+    formData.append('connection_id', connId);
+    formData.append('database', state.dbExplorer.selectedDb);
+    formData.append('sql', paginatedQuery);
+    
+    try {
+        const response = await fetch('api.php', {
+            method: 'POST',
+            body: formData
+        });
+        const data = await response.json();
+        
+        if (data.success) {
+            if (!data.is_select) {
+                gridContainer.innerHTML = `<div style="padding:20px; color:var(--accent-success); text-align:center;">Comando executado com sucesso. Linhas afetadas: ${data.affected_rows}</div>`;
+                document.getElementById('db-pagination-info').textContent = `Comando executado.`;
+                return;
+            }
+            
+            state.dbExplorer.tableData = data.rows;
+            renderDataGrid(data.columns, data.rows);
+        } else {
+            gridContainer.innerHTML = `<div style="padding:20px; color:var(--accent-error); font-family:var(--font-mono); font-size:12px; white-space:pre-wrap;">${escapeHTML(data.message)}</div>`;
+            document.getElementById('db-pagination-info').textContent = `Erro na execução.`;
+        }
+    } catch (err) {
+        gridContainer.innerHTML = `<div style="padding:20px; color:var(--accent-error); font-size:12px;">Falha de comunicação: ${escapeHTML(err.message)}</div>`;
+        document.getElementById('db-pagination-info').textContent = `Falha de rede.`;
+    }
+}
+
+function renderDataGrid(columns, rows) {
+    const gridContainer = document.getElementById('db-data-grid-container');
+    gridContainer.innerHTML = '';
+    
+    if (rows.length === 0) {
+        gridContainer.innerHTML = '<div style="padding:20px; color:var(--text-muted); text-align:center;">Nenhum registro encontrado para esta página.</div>';
+        document.getElementById('db-pagination-info').textContent = `Mostrando 0 registros`;
+        document.getElementById('db-pagination-page-label').textContent = `Página ${state.dbExplorer.currentPage}`;
+        return;
+    }
+    
+    const table = document.createElement('table');
+    table.className = 'db-grid-table';
+    
+    // Header
+    const thead = document.createElement('thead');
+    const trHead = document.createElement('tr');
+    columns.forEach(col => {
+        const th = document.createElement('th');
+        th.textContent = col;
+        trHead.appendChild(th);
+    });
+    // Action header
+    const thActions = document.createElement('th');
+    thActions.textContent = 'Ações';
+    thActions.style.width = '120px';
+    thActions.style.textAlign = 'center';
+    trHead.appendChild(thActions);
+    thead.appendChild(trHead);
+    table.appendChild(thead);
+    
+    // Body
+    const tbody = document.createElement('tbody');
+    rows.forEach((row, rowIndex) => {
+        const tr = document.createElement('tr');
+        tr.dataset.rowIndex = rowIndex;
+        
+        columns.forEach(col => {
+            const td = document.createElement('td');
+            td.dataset.column = col;
+            td.textContent = row[col] !== null ? row[col] : 'NULL';
+            if (row[col] === null) td.style.color = 'var(--text-muted)';
+            tr.appendChild(td);
+        });
+        
+        // Actions cell
+        const tdActions = document.createElement('td');
+        tdActions.style.textAlign = 'center';
+        tdActions.innerHTML = `
+            <button class="btn btn-sm btn-edit" onclick="editDbRowInline(${rowIndex}, this)">✏️ Editar</button>
+            <button class="btn btn-sm btn-danger btn-delete" onclick="deleteDbRow(${rowIndex})">X</button>
+        `;
+        tr.appendChild(tdActions);
+        tbody.appendChild(tr);
+    });
+    table.appendChild(tbody);
+    gridContainer.appendChild(table);
+    
+    // Pagination footer updates
+    const count = rows.length;
+    const startRecord = (state.dbExplorer.currentPage - 1) * state.dbExplorer.limit + 1;
+    const endRecord = startRecord + count - 1;
+    document.getElementById('db-pagination-info').textContent = `Mostrando registros ${startRecord}-${endRecord}`;
+    document.getElementById('db-pagination-page-label').textContent = `Página ${state.dbExplorer.currentPage}`;
+    
+    // Enable next button if returned count is exactly our limit (meaning there might be more)
+    document.getElementById('db-pagination-next-btn').disabled = count < state.dbExplorer.limit;
+}
+
+async function fetchTableStructure() {
+    const connId = document.getElementById('db-explorer-connection-select').value;
+    if (!connId || !state.dbExplorer.selectedTable) return;
+    
+    const body = document.getElementById('db-table-structure-body');
+    body.innerHTML = '<tr><td colspan="7" style="text-align:center; color:var(--text-muted); padding:20px;">Carregando estrutura...</td></tr>';
+    
+    try {
+        const response = await fetch(`api.php?action=db_table_structure&connection_id=${connId}&database=${encodeURIComponent(state.dbExplorer.selectedDb)}&table=${encodeURIComponent(state.dbExplorer.selectedTable)}`);
+        const data = await response.json();
+        
+        if (data.success) {
+            body.innerHTML = '';
+            state.dbExplorer.tableColumns = data.columns;
+            
+            data.columns.forEach(col => {
+                const tr = document.createElement('tr');
+                
+                tr.innerHTML = `
+                    <td><strong>${escapeHTML(col.name)}</strong></td>
+                    <td><code style="color:var(--accent-hover);">${escapeHTML(col.type)}</code></td>
+                    <td>${col.nullable ? '<span style="color:var(--accent-success);">Sim</span>' : '<span style="color:var(--accent-error);">Não</span>'}</td>
+                    <td><span style="font-family:var(--font-mono); font-weight:600; color:var(--accent);">${escapeHTML(col.key)}</span></td>
+                    <td><span style="color:var(--text-muted); font-size:12px;">${col.default !== null ? escapeHTML(col.default) : 'NULL'}</span></td>
+                    <td><span style="color:var(--text-muted); font-size:11px;">${escapeHTML(col.extra)}</span></td>
+                    <td style="text-align: center;">
+                        <button class="btn btn-sm" onclick="openEditDbColumnModal(${JSON.stringify(col).replace(/"/g, '&quot;')})">✏️</button>
+                        <button class="btn btn-sm btn-danger" onclick="deleteDbColumn('${escapeHTML(col.name)}')">X</button>
+                    </td>
+                `;
+                body.appendChild(tr);
+            });
+        } else {
+            body.innerHTML = `<tr><td colspan="7" style="text-align:center; color:var(--accent-error); padding:20px;">Erro: ${escapeHTML(data.message)}</td></tr>`;
+        }
+    } catch (err) {
+        body.innerHTML = `<tr><td colspan="7" style="text-align:center; color:var(--accent-error); padding:20px;">Falha: ${escapeHTML(err.message)}</td></tr>`;
+    }
+}
+
+// In-line Row Editing Logic
+window.editDbRowInline = function(rowIndex, btn) {
+    const tr = document.querySelector(`.db-grid-table tr[data-row-index="${rowIndex}"]`);
+    if (!tr) return;
+    
+    const rowData = state.dbExplorer.tableData[rowIndex];
+    const columns = Object.keys(rowData);
+    
+    // Change cells to inputs
+    columns.forEach(col => {
+        const td = tr.querySelector(`td[data-column="${col}"]`);
+        if (td) {
+            const input = document.createElement('input');
+            input.type = 'text';
+            input.className = 'db-grid-cell-input';
+            input.value = rowData[col] !== null ? rowData[col] : '';
+            td.innerHTML = '';
+            td.appendChild(input);
+        }
+    });
+    
+    // Change actions buttons
+    const tdActions = tr.lastElementChild;
+    tdActions.innerHTML = `
+        <button class="btn btn-sm btn-primary" onclick="saveDbRowInline(${rowIndex}, this)">Salvar</button>
+        <button class="btn btn-sm" onclick="cancelDbRowInline(${rowIndex}, this)">Cancelar</button>
+    `;
+};
+
+window.cancelDbRowInline = function(rowIndex, btn) {
+    // Just re-render data grid to discard changes
+    renderDataGrid(Object.keys(state.dbExplorer.tableData[0]), state.dbExplorer.tableData);
+};
+
+window.saveDbRowInline = async function(rowIndex, btn) {
+    const tr = document.querySelector(`.db-grid-table tr[data-row-index="${rowIndex}"]`);
+    if (!tr) return;
+    
+    const connId = document.getElementById('db-explorer-connection-select').value;
+    const oldRowData = state.dbExplorer.tableData[rowIndex];
+    const columns = Object.keys(oldRowData);
+    
+    const newValuesObj = {};
+    columns.forEach(col => {
+        const td = tr.querySelector(`td[data-column="${col}"]`);
+        const input = td.querySelector('input');
+        newValuesObj[col] = input.value;
+    });
+    
+    // Build keys (WHERE clause matching columns)
+    const priCols = state.dbExplorer.tableColumns.filter(c => c.key === 'PRI').map(c => c.name);
+    const keysObj = {};
+    
+    if (priCols.length > 0) {
+        priCols.forEach(col => {
+            keysObj[col] = oldRowData[col];
+        });
+    } else {
+        // Fallback: match all columns
+        columns.forEach(col => {
+            keysObj[col] = oldRowData[col];
+        });
+    }
+    
+    btn.disabled = true;
+    btn.textContent = 'Salving...';
+    
+    const formData = new FormData();
+    formData.append('action', 'db_row_update');
+    formData.append('connection_id', connId);
+    formData.append('database', state.dbExplorer.selectedDb);
+    formData.append('table', state.dbExplorer.selectedTable);
+    formData.append('keys', JSON.stringify(keysObj));
+    formData.append('values', JSON.stringify(newValuesObj));
+    
+    try {
+        const response = await fetch('api.php', {
+            method: 'POST',
+            body: formData
+        });
+        const data = await response.json();
+        
+        if (data.success) {
+            showToast("Registro atualizado com sucesso!", "success");
+            fetchTableData();
+        } else {
+            showToast("Erro ao atualizar: " + data.message, "error");
+            btn.disabled = false;
+            btn.textContent = 'Salvar';
+        }
+    } catch (err) {
+        showToast("Erro na requisição: " + err.message, "error");
+        btn.disabled = false;
+        btn.textContent = 'Salvar';
+    }
+};
+
+window.deleteDbRow = function(rowIndex) {
+    const connId = document.getElementById('db-explorer-connection-select').value;
+    const rowData = state.dbExplorer.tableData[rowIndex];
+    const columns = Object.keys(rowData);
+    
+    showConfirm("Deseja realmente remover permanentemente este registro?", async () => {
+        const priCols = state.dbExplorer.tableColumns.filter(c => c.key === 'PRI').map(c => c.name);
+        const keysObj = {};
+        
+        if (priCols.length > 0) {
+            priCols.forEach(col => {
+                keysObj[col] = rowData[col];
+            });
+        } else {
+            columns.forEach(col => {
+                keysObj[col] = rowData[col];
+            });
+        }
+        
+        const formData = new FormData();
+        formData.append('action', 'db_row_delete');
+        formData.append('connection_id', connId);
+        formData.append('database', state.dbExplorer.selectedDb);
+        formData.append('table', state.dbExplorer.selectedTable);
+        formData.append('keys', JSON.stringify(keysObj));
+        
+        try {
+            const response = await fetch('api.php', {
+                method: 'POST',
+                body: formData
+            });
+            const data = await response.json();
+            
+            if (data.success) {
+                showToast("Registro removido com sucesso!", "success");
+                fetchTableData();
+            } else {
+                showToast("Erro ao deletar registro: " + data.message, "error");
+            }
+        } catch (err) {
+            showToast("Erro na requisição: " + err.message, "error");
+        }
+    });
+};
+
+// Row Modal Insertion Logic
+window.openAddDbRowModal = function() {
+    const container = document.getElementById('db-row-fields-container');
+    container.innerHTML = '';
+    
+    document.getElementById('modal-db-row-title').textContent = `Inserir Registro - ${state.dbExplorer.selectedTable}`;
+    
+    state.dbExplorer.tableColumns.forEach(col => {
+        const group = document.createElement('div');
+        group.className = 'form-group';
+        
+        const isAuto = col.extra && col.extra.includes('auto_increment');
+        
+        group.innerHTML = `
+            <label class="form-label" for="row-input-${col.name}">
+                ${escapeHTML(col.name)}
+                <span style="font-size:10px; color:var(--text-muted);">
+                    (${escapeHTML(col.type)})${col.nullable ? '' : ' *'}${isAuto ? ' [Auto Incremento]' : ''}
+                </span>
+            </label>
+            <input type="text" class="form-input row-field-input" id="row-input-${col.name}" name="${col.name}" 
+                   placeholder="${col.default !== null ? 'Padrão: ' + col.default : (col.nullable ? 'Nulo' : 'Obrigatório')}"
+                   ${isAuto ? 'disabled' : ''}>
+        `;
+        container.appendChild(group);
+    });
+    
+    document.getElementById('modal-db-row').classList.add('active');
+};
+
+async function saveDbRowSubmit(e) {
+    e.preventDefault();
+    const connId = document.getElementById('db-explorer-connection-select').value;
+    
+    const inputs = document.querySelectorAll('#db-row-fields-container .row-field-input');
+    const valuesObj = {};
+    
+    inputs.forEach(input => {
+        if (!input.disabled) {
+            valuesObj[input.name] = input.value;
+        }
+    });
+    
+    const submitBtn = document.getElementById('btn-save-db-row');
+    submitBtn.disabled = true;
+    submitBtn.textContent = 'Salving...';
+    
+    const formData = new FormData();
+    formData.append('action', 'db_row_insert');
+    formData.append('connection_id', connId);
+    formData.append('database', state.dbExplorer.selectedDb);
+    formData.append('table', state.dbExplorer.selectedTable);
+    formData.append('values', JSON.stringify(valuesObj));
+    
+    try {
+        const response = await fetch('api.php', {
+            method: 'POST',
+            body: formData
+        });
+        const data = await response.json();
+        
+        if (data.success) {
+            closeModal('modal-db-row');
+            showToast("Registro inserido com sucesso!", "success");
+            fetchTableData();
+        } else {
+            showToast("Erro ao inserir registro: " + data.message, "error");
+        }
+    } catch (err) {
+        showToast("Erro na requisição: " + err.message, "error");
+    } finally {
+        submitBtn.disabled = false;
+        submitBtn.textContent = 'Salvar';
+    }
+}
+
+// Columns (Structure) Logic
+window.openAddDbColumnModal = function() {
+    document.getElementById('modal-db-column-title').textContent = 'Adicionar Coluna';
+    document.getElementById('db-col-is-edit').value = 'false';
+    document.getElementById('db-col-old-name').value = '';
+    
+    document.getElementById('db-col-name').value = '';
+    document.getElementById('db-col-type').value = 'varchar(255)';
+    document.getElementById('db-col-nullable').checked = true;
+    document.getElementById('db-col-default').value = '';
+    
+    document.getElementById('modal-db-column').classList.add('active');
+};
+
+window.openEditDbColumnModal = function(col) {
+    document.getElementById('modal-db-column-title').textContent = `Editar Coluna - ${col.name}`;
+    document.getElementById('db-col-is-edit').value = 'true';
+    document.getElementById('db-col-old-name').value = col.name;
+    
+    document.getElementById('db-col-name').value = col.name;
+    document.getElementById('db-col-type').value = col.type;
+    document.getElementById('db-col-nullable').checked = col.nullable;
+    document.getElementById('db-col-default').value = col.default !== null ? col.default : '';
+    
+    document.getElementById('modal-db-column').classList.add('active');
+};
+
+window.deleteDbColumn = function(colName) {
+    const connId = document.getElementById('db-explorer-connection-select').value;
+    
+    showConfirm(`Deseja realmente excluir a coluna "${colName}"? ISSO APAGARÁ TODOS OS DADOS DA COLUNA PERMANENTEMENTE!`, async () => {
+        const formData = new FormData();
+        formData.append('action', 'db_column_delete');
+        formData.append('connection_id', connId);
+        formData.append('database', state.dbExplorer.selectedDb);
+        formData.append('table', state.dbExplorer.selectedTable);
+        formData.append('column_name', colName);
+        
+        try {
+            const response = await fetch('api.php', {
+                method: 'POST',
+                body: formData
+            });
+            const data = await response.json();
+            
+            if (data.success) {
+                showToast("Coluna excluída com sucesso!", "success");
+                fetchTableStructure();
+                fetchTableData();
+            } else {
+                showToast("Erro ao excluir coluna: " + data.message, "error");
+            }
+        } catch (err) {
+            showToast("Erro na requisição: " + err.message, "error");
+        }
+    });
+};
+
+async function saveDbColumnSubmit(e) {
+    e.preventDefault();
+    
+    const connId = document.getElementById('db-explorer-connection-select').value;
+    const isEdit = document.getElementById('db-col-is-edit').value === 'true';
+    const oldName = document.getElementById('db-col-old-name').value;
+    const newName = document.getElementById('db-col-name').value.trim();
+    const type = document.getElementById('db-col-type').value.trim();
+    const nullable = document.getElementById('db-col-nullable').checked;
+    const defaultValue = document.getElementById('db-col-default').value;
+    
+    const submitBtn = document.getElementById('btn-save-db-column');
+    submitBtn.disabled = true;
+    submitBtn.textContent = 'Salving...';
+    
+    const formData = new FormData();
+    formData.append('action', isEdit ? 'db_column_modify' : 'db_column_add');
+    formData.append('connection_id', connId);
+    formData.append('database', state.dbExplorer.selectedDb);
+    formData.append('table', state.dbExplorer.selectedTable);
+    
+    if (isEdit) {
+        formData.append('old_name', oldName);
+        formData.append('new_name', newName);
+    } else {
+        formData.append('column_name', newName);
+    }
+    formData.append('column_type', type);
+    formData.append('nullable', nullable ? 'true' : 'false');
+    formData.append('default_value', defaultValue);
+    
+    try {
+        const response = await fetch('api.php', {
+            method: 'POST',
+            body: formData
+        });
+        const data = await response.json();
+        
+        if (data.success) {
+            closeModal('modal-db-column');
+            showToast(isEdit ? "Coluna modificada com sucesso!" : "Coluna adicionada com sucesso!", "success");
+            fetchTableStructure();
+            fetchTableData();
+        } else {
+            showToast("Erro ao salvar coluna: " + data.message, "error");
+        }
+    } catch (err) {
+        showToast("Erro na requisição: " + err.message, "error");
+    } finally {
+        submitBtn.disabled = false;
+        submitBtn.textContent = 'Salvar';
+    }
+}

@@ -141,8 +141,108 @@
                                         style="background:var(--bg-input); padding:2px 6px; border-radius:3px; border:1px solid var(--border-color); font-size:11px; font-family:var(--font-mono);">clear</kbd></span>
                             </div>
                         </div>
+                        <div style="margin-top: 30px; font-size: 11px; color: var(--text-muted); text-align: center;">
+                            v1.0 - 2026 <a href="https://laralabs.dev" target="_blank" style="color: var(--accent); text-decoration: none; font-weight: 500;">Laralabs</a>
+                        </div>
                     </div>
                     <div id="editor" class="editor-instance hidden"></div>
+                    
+                    <!-- Database Explorer Panel -->
+                    <div id="db-explorer-container" class="hidden">
+                        <!-- Sidebar for Databases & Tables Tree -->
+                        <aside class="db-explorer-sidebar">
+                            <div class="db-explorer-sidebar-header">
+                                <span>Navegador DB</span>
+                                <button class="action-icon-btn" id="db-explorer-refresh-btn" data-tooltip="Recarregar Estrutura">🔄</button>
+                            </div>
+                            <div class="db-explorer-connection-select-container">
+                                <label for="db-explorer-connection-select" style="font-size:10px; color:var(--text-muted); display:block; margin-bottom:4px;">Conexão:</label>
+                                <select id="db-explorer-connection-select" class="form-input" style="padding:4px 8px; font-size:12px;">
+                                    <option value="">Selecione...</option>
+                                </select>
+                            </div>
+                            <div class="db-explorer-sidebar-content">
+                                <ul class="file-tree" id="db-tree-root">
+                                    <li style="color: var(--text-muted); font-size:12px; text-align:center; padding-top:20px;">
+                                        Selecione uma conexão para listar os bancos.
+                                    </li>
+                                </ul>
+                            </div>
+                        </aside>
+                        
+                        <!-- Main Content Area for selected Table -->
+                        <main class="db-explorer-content">
+                            <div id="db-explorer-empty-placeholder" class="db-explorer-placeholder">
+                                <h3>Gerenciador de Banco de Dados</h3>
+                                <p style="color: var(--text-muted); font-size:13px; margin-top:8px;">Selecione uma tabela na árvore lateral para visualizar e editar seus dados e estrutura.</p>
+                            </div>
+                            
+                            <div id="db-table-view-container" class="hidden">
+                                <div class="db-table-header">
+                                    <div class="db-table-title-section">
+                                        <span class="db-table-badge">Tabela</span>
+                                        <h2 id="db-table-title">tabela</h2>
+                                    </div>
+                                    <div class="db-table-tabs">
+                                        <button class="db-tab-btn active" id="db-tab-data-btn">Dados</button>
+                                        <button class="db-tab-btn" id="db-tab-structure-btn">Estrutura</button>
+                                    </div>
+                                </div>
+                                
+                                <!-- Tab content: Data -->
+                                <div class="db-tab-content" id="db-tab-data-content">
+                                    <div class="db-data-toolbar">
+                                        <div class="db-search-box-container">
+                                            <input type="text" id="db-data-search-query" class="form-input" placeholder="SELECT * FROM tabela LIMIT 5" />
+                                            <button class="btn btn-primary btn-sm" id="db-data-run-query-btn">Filtrar</button>
+                                        </div>
+                                        <button class="btn btn-sm" id="db-data-add-row-btn" style="background-color: var(--accent-success); border-color: var(--accent-success); color: #0b0114;">+ Inserir Registro</button>
+                                    </div>
+                                    
+                                    <div class="db-data-grid-container" id="db-data-grid-container">
+                                        <!-- Dynamic table data grid loads here -->
+                                    </div>
+                                    
+                                    <!-- Pagination Footer -->
+                                    <div class="db-data-pagination">
+                                        <div class="db-pagination-info" id="db-pagination-info">
+                                            Mostrando registros
+                                        </div>
+                                        <div class="db-pagination-controls">
+                                            <button class="btn btn-sm" id="db-pagination-prev-btn" disabled>Anterior</button>
+                                            <span class="db-pagination-page" id="db-pagination-page-label">Página 1</span>
+                                            <button class="btn btn-sm" id="db-pagination-next-btn">Próxima</button>
+                                        </div>
+                                    </div>
+                                </div>
+                                
+                                <!-- Tab content: Structure -->
+                                <div class="db-tab-content hidden" id="db-tab-structure-content">
+                                    <div class="db-structure-toolbar">
+                                        <button class="btn btn-primary btn-sm" id="db-structure-add-column-btn">+ Adicionar Coluna</button>
+                                    </div>
+                                    <div class="db-structure-grid-container">
+                                        <table class="db-results-table" style="font-size: 13px;">
+                                            <thead>
+                                                <tr>
+                                                    <th>Nome</th>
+                                                    <th>Tipo</th>
+                                                    <th>Nulável</th>
+                                                    <th>Chave</th>
+                                                    <th>Padrão</th>
+                                                    <th>Extra</th>
+                                                    <th style="width: 120px; text-align: center;">Ações</th>
+                                                </tr>
+                                            </thead>
+                                            <tbody id="db-table-structure-body">
+                                                <!-- Dynamic structure columns load here -->
+                                            </tbody>
+                                        </table>
+                                    </div>
+                                </div>
+                            </div>
+                        </main>
+                    </div>
                 </div>
             </section>
 
@@ -176,8 +276,12 @@
         <aside class="sidebar-panel" id="panel-right" style="width: 300px;">
             <div class="sidebar-header">
                 <span>Banco de Dados</span>
-                <button class="btn btn-sm btn-primary tooltip-right" id="btn-add-db" data-tooltip="Nova Conexão"
-                    style="padding: 2px 8px; font-size:10px;">+ Conexão</button>
+                <div style="display: flex; gap: 4px;">
+                    <button class="btn btn-sm tooltip-right" id="btn-explore-db" data-tooltip="Explorar Banco (Nova Aba)"
+                        style="padding: 2px 6px; font-size:10px; background-color: var(--bg-hover);">🔍 Explorar</button>
+                    <button class="btn btn-sm btn-primary tooltip-right" id="btn-add-db" data-tooltip="Nova Conexão"
+                        style="padding: 2px 6px; font-size:10px;">+ Conexão</button>
+                </div>
             </div>
             <div class="panel-content" style="display: flex; flex-direction: column; gap: 12px;">
 
@@ -330,6 +434,58 @@
             <div class="search-modal-footer">
                 <span>Use <kbd>↑</kbd> <kbd>↓</kbd> para navegar, <kbd>Enter</kbd> para abrir e <kbd>Esc</kbd> para fechar.</span>
             </div>
+        </div>
+    </div>
+
+    <!-- Modal for DB Row Add/Edit -->
+    <div class="modal-overlay" id="modal-db-row">
+        <div class="modal-content" style="width: 500px; max-width: 95%; max-height: 85vh; display: flex; flex-direction: column;">
+            <h3 class="modal-header" id="modal-db-row-title">Inserir Registro</h3>
+            <form id="form-db-row" style="overflow-y: auto; flex: 1; padding-right: 4px;">
+                <div id="db-row-fields-container">
+                    <!-- Dynamically populated field inputs -->
+                </div>
+                <div class="form-actions" style="margin-top: 20px; padding-top: 10px; border-top: 1px solid var(--border-color);">
+                    <button type="button" class="btn" onclick="closeModal('modal-db-row')">Cancelar</button>
+                    <button type="submit" class="btn btn-primary" id="btn-save-db-row">Salvar</button>
+                </div>
+            </form>
+        </div>
+    </div>
+
+    <!-- Modal for DB Column Add/Edit -->
+    <div class="modal-overlay" id="modal-db-column">
+        <div class="modal-content" style="width: 400px; max-width: 90%;">
+            <h3 class="modal-header" id="modal-db-column-title">Adicionar Coluna</h3>
+            <form id="form-db-column">
+                <input type="hidden" id="db-col-is-edit" value="false">
+                <input type="hidden" id="db-col-old-name" value="">
+                
+                <div class="form-group">
+                    <label class="form-label" for="db-col-name">Nome da Coluna</label>
+                    <input type="text" class="form-input" id="db-col-name" placeholder="ex: email" required>
+                </div>
+                
+                <div class="form-group">
+                    <label class="form-label" for="db-col-type">Tipo</label>
+                    <input type="text" class="form-input" id="db-col-type" placeholder="ex: varchar(255) ou INT" required>
+                </div>
+                
+                <div class="form-group" style="display: flex; align-items: center; gap: 8px; margin-top: 15px;">
+                    <input type="checkbox" id="db-col-nullable" checked style="width: 16px; height: 16px;">
+                    <label class="form-label" for="db-col-nullable" style="margin-bottom: 0; cursor: pointer;">Permitir Nulo (NULL)</label>
+                </div>
+                
+                <div class="form-group" style="margin-top: 15px;">
+                    <label class="form-label" for="db-col-default">Valor Padrão</label>
+                    <input type="text" class="form-input" id="db-col-default" placeholder="ex: NULL, CURRENT_TIMESTAMP ou valor literal">
+                </div>
+                
+                <div class="form-actions">
+                    <button type="button" class="btn" onclick="closeModal('modal-db-column')">Cancelar</button>
+                    <button type="submit" class="btn btn-primary" id="btn-save-db-column">Salvar</button>
+                </div>
+            </form>
         </div>
     </div>
 
