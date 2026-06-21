@@ -204,6 +204,39 @@ try {
             echo json_encode(['success' => true, 'path' => $relPath]);
             break;
 
+        case 'file_upload':
+            $targetDir = $_POST['target_dir'] ?? '';
+            $relativePath = $_POST['relative_path'] ?? ''; // preserve folder structure
+            
+            if (empty($_FILES['file'])) {
+                throw new Exception("Nenhum arquivo enviado.");
+            }
+            
+            $file = $_FILES['file'];
+            if ($file['error'] !== UPLOAD_ERR_OK) {
+                throw new Exception("Erro no upload do arquivo.");
+            }
+            
+            $absTargetDir = get_absolute_path($targetDir);
+            
+            if (!empty($relativePath)) {
+                $finalPath = $absTargetDir . DIRECTORY_SEPARATOR . $relativePath;
+            } else {
+                $finalPath = $absTargetDir . DIRECTORY_SEPARATOR . basename($file['name']);
+            }
+            
+            $finalDir = dirname($finalPath);
+            if (!is_dir($finalDir)) {
+                mkdir($finalDir, 0755, true);
+            }
+            
+            if (!move_uploaded_file($file['tmp_name'], $finalPath)) {
+                throw new Exception("Falha ao mover arquivo enviado.");
+            }
+            
+            echo json_encode(['success' => true]);
+            break;
+
         case 'file_rename':
             $relativePath = $_POST['path'] ?? '';
             $newName = $_POST['new_name'] ?? '';

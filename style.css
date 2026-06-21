@@ -1364,4 +1364,47 @@ body {
     box-shadow: 0 0 4px rgba(189, 0, 255, 0.4);
 }
 
+/* Upload Modal */
+.upload-drop-zone {
+    border: 2px dashed var(--border-color);
+    border-radius: 6px;
+    padding: 30px;
+    text-align: center;
+    color: var(--text-muted);
+    transition: all 0.2s;
+    background-color: var(--bg-primary);
+}
 
+.upload-drop-zone.highlight {
+    border-color: var(--accent);
+    background-color: rgba(189, 0, 255, 0.1);
+}
+
+.upload-progress-item {
+    display: flex;
+    align-items: center;
+    margin-bottom: 8px;
+    font-size: 12px;
+}
+
+.upload-file-name {
+    flex: 1;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+    margin-right: 10px;
+}
+
+.upload-progress-bar-wrapper {
+    width: 150px;
+    height: 6px;
+    background-color: var(--bg-input);
+    border-radius: 3px;
+    overflow: hidden;
+}
+
+.upload-progress-bar {
+    height: 100%;
+    background-color: var(--accent);
+    transition: width 0.2s, background-color 0.2s;
+}

@@ -297,7 +297,7 @@ async function loadFiles(path = '', container = document.getElementById('file-tr
             contextMenuBtn.textContent = '⋮';
             contextMenuBtn.addEventListener('click', (e) => {
                 e.stopPropagation();
-                showTreeContextMenu(e, row.dataset.path, file.name);
+                showTreeContextMenu(e, row.dataset.path, file.name, file.is_dir);
             });
             row.appendChild(contextMenuBtn);
             
@@ -359,13 +359,14 @@ function toggleFolder(row, subUl) {
     }
 }
 
-function showTreeContextMenu(e, path, name) {
+function showTreeContextMenu(e, path, name, isDir) {
     let menu = document.getElementById('tree-context-menu');
     if (!menu) {
         menu = document.createElement('div');
         menu.id = 'tree-context-menu';
         menu.className = 'tree-context-menu';
         menu.innerHTML = `
+            <div class="tree-context-menu-item" id="ctx-upload" style="display: none;">📤 Carregar arquivos</div>
             <div class="tree-context-menu-item" id="ctx-rename">✏️ Renomear</div>
             <div class="tree-context-menu-item danger" id="ctx-delete">❌ Excluir</div>
         `;
@@ -376,6 +377,17 @@ function showTreeContextMenu(e, path, name) {
                 menu.classList.remove('active');
             }
         });
+    }
+
+    const uploadItem = document.getElementById('ctx-upload');
+    if (isDir) {
+        uploadItem.style.display = 'flex';
+        uploadItem.onclick = () => {
+            menu.classList.remove('active');
+            openUploadModal(path);
+        };
+    } else {
+        uploadItem.style.display = 'none';
     }
 
     document.getElementById('ctx-rename').onclick = () => {
@@ -962,6 +974,8 @@ async function executeSqlQuery() {
 
 // 9. Event Listeners & Modals Setup
 function initEventListeners() {
+    initUploadEvents();
+    
     // New Node Modal Action Trigger
     document.getElementById('new-file-btn').addEventListener('click', () => openNewNodeModal('file'));
     document.getElementById('new-folder-btn').addEventListener('click', () => openNewNodeModal('dir'));
@@ -2183,6 +2197,176 @@ async function saveDbRowSubmit(e) {
     }
 }
 
+// 12. Upload Logic
+function openUploadModal(path) {
+    document.getElementById('upload-target-path').value = path;
+    document.getElementById('upload-progress-container').innerHTML = '';
+    document.getElementById('modal-upload').classList.add('active');
+}
+
+function initUploadEvents() {
+    const dropZone = document.getElementById('upload-drop-zone');
+    const filesInput = document.getElementById('upload-files-input');
+    const folderInput = document.getElementById('upload-folder-input');
+
+    if (!dropZone) return;
+
+    ['dragenter', 'dragover', 'dragleave', 'drop'].forEach(eventName => {
+        dropZone.addEventListener(eventName, preventDefaults, false);
+    });
+
+    function preventDefaults(e) {
+        e.preventDefault();
+        e.stopPropagation();
+    }
+
+    ['dragenter', 'dragover'].forEach(eventName => {
+        dropZone.addEventListener(eventName, () => dropZone.classList.add('highlight'), false);
+    });
+
+    ['dragleave', 'drop'].forEach(eventName => {
+        dropZone.addEventListener(eventName, () => dropZone.classList.remove('highlight'), false);
+    });
+
+    dropZone.addEventListener('drop', (e) => {
+        const dt = e.dataTransfer;
+        const items = dt.items;
+        if (items) {
+            handleDropItems(items);
+        } else {
+            handleFiles(dt.files);
+        }
+    });
+
+    filesInput.addEventListener('change', function() {
+        handleFiles(this.files);
+        this.value = ''; // Reset
+    });
+
+    folderInput.addEventListener('change', function() {
+        handleFiles(this.files);
+        this.value = ''; // Reset
+    });
+}
+
+function handleDropItems(items) {
+    const filesToUpload = [];
+    let pendingEntries = 0;
+
+    function processEntry(entry, path = '') {
+        if (entry.isFile) {
+            pendingEntries++;
+            entry.file(file => {
+                file.customPath = path + file.name;
+                filesToUpload.push(file);
+                pendingEntries--;
+                checkDone();
+            });
+        } else if (entry.isDirectory) {
+            pendingEntries++;
+            const dirReader = entry.createReader();
+            dirReader.readEntries(entries => {
+                entries.forEach(e => processEntry(e, path + entry.name + '/'));
+                pendingEntries--;
+                checkDone();
+            });
+        }
+    }
+
+    function checkDone() {
+        if (pendingEntries === 0 && filesToUpload.length > 0) {
+            handleFiles(filesToUpload);
+        }
+    }
+
+    for (let i = 0; i < items.length; i++) {
+        const item = items[i];
+        if (item.webkitGetAsEntry) {
+            const entry = item.webkitGetAsEntry();
+            if (entry) {
+                processEntry(entry);
+            }
+        }
+    }
+}
+
+function handleFiles(files) {
+    if (!files || files.length === 0) return;
+    const targetPath = document.getElementById('upload-target-path').value;
+    
+    Array.from(files).forEach(file => {
+        uploadFile(file, targetPath);
+    });
+}
+
+function uploadFile(file, targetDir) {
+    const container = document.getElementById('upload-progress-container');
+    
+    // Create progress item UI
+    const itemDiv = document.createElement('div');
+    itemDiv.className = 'upload-progress-item';
+    
+    const nameDiv = document.createElement('div');
+    nameDiv.className = 'upload-file-name';
+    const relativePath = file.webkitRelativePath || file.customPath || file.name;
+    nameDiv.textContent = relativePath;
+    
+    const progressWrapper = document.createElement('div');
+    progressWrapper.className = 'upload-progress-bar-wrapper';
+    
+    const progressBar = document.createElement('div');
+    progressBar.className = 'upload-progress-bar';
+    progressBar.style.width = '0%';
+    
+    progressWrapper.appendChild(progressBar);
+    itemDiv.appendChild(nameDiv);
+    itemDiv.appendChild(progressWrapper);
+    container.appendChild(itemDiv);
+    
+    // Upload via XMLHttpRequest
+    const xhr = new XMLHttpRequest();
+    const formData = new FormData();
+    
+    formData.append('action', 'file_upload');
+    formData.append('target_dir', targetDir);
+    formData.append('relative_path', relativePath);
+    formData.append('file', file);
+    
+    xhr.upload.addEventListener('progress', (e) => {
+        if (e.lengthComputable) {
+            const percentComplete = (e.loaded / e.total) * 100;
+            progressBar.style.width = percentComplete + '%';
+        }
+    });
+    
+    xhr.addEventListener('load', () => {
+        if (xhr.status === 200) {
+            try {
+                const res = JSON.parse(xhr.responseText);
+                if (res.success) {
+                    progressBar.style.backgroundColor = 'var(--accent-success)';
+                } else {
+                    progressBar.style.backgroundColor = 'var(--accent-error)';
+                    nameDiv.textContent += ` (Erro: ${res.message || 'Desconhecido'})`;
+                }
+            } catch (err) {
+                progressBar.style.backgroundColor = 'var(--accent-error)';
+            }
+        } else {
+            progressBar.style.backgroundColor = 'var(--accent-error)';
+        }
+        
+        const refreshBtn = document.getElementById('refresh-tree-btn');
+        if (refreshBtn) refreshBtn.click();
+    });
+    
+    xhr.addEventListener('error', () => {
+        progressBar.style.backgroundColor = 'var(--accent-error)';
+    });
+    
+    xhr.open('POST', 'api.php', true);
+    xhr.send(formData);
+}
 // Columns (Structure) Logic
 window.openAddDbColumnModal = function() {
     document.getElementById('modal-db-column-title').textContent = 'Adicionar Coluna';
