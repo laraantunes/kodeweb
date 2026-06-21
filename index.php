@@ -262,8 +262,7 @@
                         placeholder="Digite seu comando aqui e aperte Enter..." autocomplete="off">
                 </div>
                 <div class="terminal-console" id="terminal-console">
-                    <div class="terminal-line" style="color: var(--text-muted);">KodeWeb Terminal Emulator -
-                        Inicializado.</div>
+                    <div class="terminal-line" style="color: var(--text-muted);">KodeWeb Terminal Emulator - Inicializado.</div>
                 </div>
             </section>
 
