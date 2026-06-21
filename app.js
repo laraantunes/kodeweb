@@ -81,14 +81,21 @@ function initAceEditor() {
                 closedAny = true;
             });
             
-            if (editor.searchBox && !editor.searchBox.isCollapsed) {
-                editor.searchBox.hide();
-                editor.focus();
-                closedAny = true;
+            const searchEl = document.querySelector('.ace_search');
+            if (searchEl && !searchEl.classList.contains('hide')) {
+                if (editor.searchBox) {
+                    editor.searchBox.hide();
+                    editor.focus();
+                    closedAny = true;
+                }
             }
             
-            return closedAny;
-        }
+            if (closedAny) {
+                return true;
+            }
+            editor.execCommand('singleSelection');
+        },
+        readOnly: true
     });
 
     // Handle Content Changes (Dirty state)
@@ -969,10 +976,13 @@ function initEventListeners() {
                 closedAny = true;
             });
             
-            if (state.editor && state.editor.searchBox && !state.editor.searchBox.isCollapsed) {
-                state.editor.searchBox.hide();
-                state.editor.focus();
-                closedAny = true;
+            const searchEl = document.querySelector('.ace_search');
+            if (searchEl && !searchEl.classList.contains('hide')) {
+                if (state.editor && state.editor.searchBox) {
+                    state.editor.searchBox.hide();
+                    state.editor.focus();
+                    closedAny = true;
+                }
             }
             
             if (closedAny) {

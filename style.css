@@ -970,7 +970,7 @@ body {
     border-radius: 6px !important;
     padding: 10px !important;
     font-family: var(--font-ui) !important;
-    display: flex !important;
+    display: flex;
     flex-direction: column !important;
     gap: 6px !important;
 }
