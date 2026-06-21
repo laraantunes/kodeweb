@@ -53,7 +53,7 @@
     <div class="workspace">
 
         <!-- Left panel (Files Explorer) -->
-        <aside class="sidebar-panel" id="panel-left" style="width: 260px;">
+        <aside class="sidebar-panel" id="panel-left" style="width: 270px;">
             <div class="sidebar-header">
                 <span>Explorer</span>
                 <div class="panel-actions">
