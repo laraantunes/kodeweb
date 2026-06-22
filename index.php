@@ -11,8 +11,8 @@
 
     <!-- Ace Editor Library from CDN -->
     <script src="https://cdnjs.cloudflare.com/ajax/libs/ace/1.32.7/ace.js" referrerpolicy="no-referrer"></script>
-    <script src="https://cdnjs.cloudflare.com/ajax/libs/ace/1.32.7/ext-language_tools.min.js"
-        referrerpolicy="no-referrer"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/ace/1.32.7/ext-language_tools.min.js" referrerpolicy="no-referrer"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/marked/11.1.1/marked.min.js" referrerpolicy="no-referrer"></script>
 </head>
 
 <body>
@@ -154,6 +154,16 @@
                             <div id="image-preview-info" style="margin-top: 15px; color: var(--text-muted); font-size: 12px; font-family: var(--font-mono);"></div>
                         </div>
                     </div>
+                    
+                    <!-- Markdown Preview Container -->
+                    <div id="md-preview-container" class="hidden" style="position: absolute; top: 0; right: 0; bottom: 0; width: 50%; border-left: 1px solid var(--border-color); background: var(--bg-primary); z-index: 4; overflow-y: auto; padding: 20px;">
+                        <div id="md-preview-content" class="markdown-body" style="color: var(--text-primary);"></div>
+                    </div>
+                    
+                    <!-- Floating Markdown Toggle Button -->
+                    <button id="md-toggle-btn" class="hidden" onclick="toggleMdPreview()" style="position: absolute; top: 15px; right: 25px; z-index: 6; background: var(--bg-secondary); border: 1px solid var(--border-color); color: var(--text-primary); padding: 5px 10px; border-radius: 4px; cursor: pointer; box-shadow: 0 2px 5px rgba(0,0,0,0.3); font-size: 12px; display: flex; align-items: center; gap: 5px; transition: all 0.2s;">
+                        <span>👁️</span> Preview
+                    </button>
                     
                     <!-- Database Explorer Panel -->
                     <div id="db-explorer-container" class="hidden">
