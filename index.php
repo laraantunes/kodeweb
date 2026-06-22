@@ -147,6 +147,14 @@
                     </div>
                     <div id="editor" class="editor-instance hidden"></div>
                     
+                    <!-- Image Preview Container -->
+                    <div id="image-preview-container" class="hidden" style="position: absolute; top: 0; left: 0; right: 0; bottom: 0; display: flex; align-items: center; justify-content: center; background-color: var(--bg-primary); z-index: 5; overflow: auto;">
+                        <div style="padding: 20px; text-align: center; display: flex; flex-direction: column; align-items: center; justify-content: center; min-height: 100%;">
+                            <img id="image-preview-element" src="" style="max-width: 100%; max-height: calc(100vh - 150px); object-fit: contain; box-shadow: 0 4px 20px rgba(0,0,0,0.5); border-radius: 4px; background-image: repeating-linear-gradient(45deg, #1d0c2c 25%, transparent 25%, transparent 75%, #1d0c2c 75%, #1d0c2c), repeating-linear-gradient(45deg, #1d0c2c 25%, #0b0114 25%, #0b0114 75%, #1d0c2c 75%, #1d0c2c); background-position: 0 0, 10px 10px; background-size: 20px 20px;">
+                            <div id="image-preview-info" style="margin-top: 15px; color: var(--text-muted); font-size: 12px; font-family: var(--font-mono);"></div>
+                        </div>
+                    </div>
+                    
                     <!-- Database Explorer Panel -->
                     <div id="db-explorer-container" class="hidden">
                         <!-- Sidebar for Databases & Tables Tree -->

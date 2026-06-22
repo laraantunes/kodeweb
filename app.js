@@ -428,13 +428,26 @@ async function openFile(path, name) {
         return;
     }
     
+    const ext = name.split('.').pop().toLowerCase();
+    const isImage = ['png', 'jpg', 'jpeg', 'gif', 'svg', 'webp', 'ico', 'bmp'].includes(ext);
+    
+    if (isImage) {
+        state.openTabs[path] = {
+            path: path,
+            name: name,
+            isImage: true,
+            isDirty: false
+        };
+        createTabUI(path, name);
+        activateTab(path);
+        return;
+    }
+    
     try {
         const response = await fetch(`api.php?action=file_read&path=${encodeURIComponent(path)}`);
         const data = await response.json();
         if (!data.success) throw new Error(data.message);
         
-        // Determine Mode based on extension
-        const ext = name.split('.').pop();
         const mode = getAceMode(ext);
         
         // Create Edit Session
@@ -445,6 +458,7 @@ async function openFile(path, name) {
             path: path,
             name: name,
             session: session,
+            isImage: false,
             isDirty: false
         };
         
@@ -496,9 +510,10 @@ function activateTab(path) {
     updateBreadcrumb(path === 'db_explorer' ? 'Explorador de Banco de Dados' : path);
     
     if (path === 'db_explorer') {
-        // Hide editor and placeholder
+        // Hide editor, image preview and placeholder
         document.getElementById('no-file-placeholder').classList.add('hidden');
         document.getElementById('editor').classList.add('hidden');
+        if(document.getElementById('image-preview-container')) document.getElementById('image-preview-container').classList.add('hidden');
         
         // Show db explorer
         document.getElementById('db-explorer-container').classList.remove('hidden');
@@ -509,13 +524,30 @@ function activateTab(path) {
         // Hide db explorer
         document.getElementById('db-explorer-container').classList.add('hidden');
         
-        // Swap Ace session
-        state.editor.setSession(tabInfo.session);
-        state.editor.focus();
-        
-        // Hide placeholder, show editor
-        document.getElementById('no-file-placeholder').classList.add('hidden');
-        document.getElementById('editor').classList.remove('hidden');
+        if (tabInfo && tabInfo.isImage) {
+            document.getElementById('editor').classList.add('hidden');
+            document.getElementById('no-file-placeholder').classList.add('hidden');
+            
+            const imgContainer = document.getElementById('image-preview-container');
+            const imgEl = document.getElementById('image-preview-element');
+            const infoEl = document.getElementById('image-preview-info');
+            
+            imgEl.onload = function() {
+                infoEl.textContent = `${this.naturalWidth} x ${this.naturalHeight} pixels`;
+            };
+            // Add a cache buster if it's an image that might change
+            imgEl.src = `api.php?action=file_serve&path=${encodeURIComponent(path)}&_t=${new Date().getTime()}`;
+            imgContainer.classList.remove('hidden');
+        } else if (tabInfo) {
+            if(document.getElementById('image-preview-container')) document.getElementById('image-preview-container').classList.add('hidden');
+            // Swap Ace session
+            state.editor.setSession(tabInfo.session);
+            state.editor.focus();
+            
+            // Hide placeholder, show editor
+            document.getElementById('no-file-placeholder').classList.add('hidden');
+            document.getElementById('editor').classList.remove('hidden');
+        }
     }
 }
 
@@ -546,6 +578,7 @@ function proceedCloseTab(path) {
             state.activeTabPath = null;
             document.getElementById('no-file-placeholder').classList.remove('hidden');
             document.getElementById('editor').classList.add('hidden');
+            if(document.getElementById('image-preview-container')) document.getElementById('image-preview-container').classList.add('hidden');
             document.getElementById('db-explorer-container').classList.add('hidden');
             updateBreadcrumb('');
         }

@@ -156,6 +156,43 @@ try {
             echo json_encode(['success' => true, 'content' => $content]);
             break;
 
+        case 'file_serve':
+            $relativePath = $_GET['path'] ?? '';
+            $absPath = get_absolute_path($relativePath);
+            
+            if (!file_exists($absPath) || is_dir($absPath)) {
+                http_response_code(404);
+                exit("Arquivo não encontrado.");
+            }
+            
+            $mimeType = @mime_content_type($absPath);
+            if (!$mimeType) {
+                $mimeType = 'application/octet-stream';
+            }
+            
+            $ext = strtolower(pathinfo($absPath, PATHINFO_EXTENSION));
+            $mimes = [
+                'svg' => 'image/svg+xml',
+                'css' => 'text/css',
+                'js' => 'application/javascript',
+                'json' => 'application/json',
+                'png' => 'image/png',
+                'jpg' => 'image/jpeg',
+                'jpeg' => 'image/jpeg',
+                'gif' => 'image/gif',
+                'webp' => 'image/webp',
+                'ico' => 'image/x-icon'
+            ];
+            if (isset($mimes[$ext])) {
+                $mimeType = $mimes[$ext];
+            }
+            
+            header('Content-Type: ' . $mimeType);
+            header('Content-Length: ' . filesize($absPath));
+            readfile($absPath);
+            exit;
+
+
         case 'file_save':
             $relativePath = $_POST['path'] ?? '';
             $content = $_POST['content'] ?? '';
