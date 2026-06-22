@@ -116,6 +116,15 @@
                             </div>
                             <div
                                 style="display:flex; justify-content:space-between; align-items:center; font-size:12px; margin-bottom:8px;">
+                                <span style="color:var(--text-muted);">Navegar entre Abas</span>
+                                <span><kbd
+                                        style="background:var(--bg-input); padding:2px 6px; border-radius:3px; border:1px solid var(--border-color); font-size:11px;">Alt
+                                        + ,</kbd> e <kbd
+                                        style="background:var(--bg-input); padding:2px 6px; border-radius:3px; border:1px solid var(--border-color); font-size:11px;">Alt
+                                        + .</kbd></span>
+                            </div>
+                            <div
+                                style="display:flex; justify-content:space-between; align-items:center; font-size:12px; margin-bottom:8px;">
                                 <span style="color:var(--text-muted);">Abrir Arquivo</span>
                                 <span style="color:var(--text-primary); font-size:11px; font-weight:500;">Duplo
                                     clique</span>
@@ -547,6 +556,7 @@
                     <tr><td><kbd>Ctrl + P</kbd></td><td>Pesquisa rápida de arquivos (Go to File)</td></tr>
                     <tr><td><kbd>Ctrl + S</kbd></td><td>Salvar arquivo atual</td></tr>
                     <tr><td><kbd>Alt + W</kbd></td><td>Fechar aba atual</td></tr>
+                    <tr><td><kbd>Alt + ,</kbd> e <kbd>Alt + .</kbd></td><td>Navegar entre abas (Anterior / Próxima)</td></tr>
                 </table>
 
                 <h4 class="help-section-title">Edição no Editor (Ace)</h4>

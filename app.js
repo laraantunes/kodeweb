@@ -65,11 +65,28 @@ function initAceEditor() {
     // Add Close Tab Command
     state.editor.commands.addCommand({
         name: 'closeTab',
-        bindKey: { win: 'Ctrl-W|Alt-W', mac: 'Command-W|Option-W' },
+        bindKey: { win: 'Alt-W', mac: 'Option-W' },
         exec: function(editor) {
             if (state.activeTabPath) {
                 closeTab(state.activeTabPath);
             }
+        }
+    });
+    
+    // Add Next/Prev Tab Commands
+    state.editor.commands.addCommand({
+        name: 'nextTab',
+        bindKey: { win: 'Alt-.', mac: 'Option-.' },
+        exec: function(editor) {
+            cycleTabs(1);
+        }
+    });
+    
+    state.editor.commands.addCommand({
+        name: 'prevTab',
+        bindKey: { win: 'Alt-,', mac: 'Option-,' },
+        exec: function(editor) {
+            cycleTabs(-1);
         }
     });
 
@@ -481,6 +498,32 @@ function createTabUI(path, name) {
     tab.className = 'tab';
     tab.dataset.path = path;
     tab.title = path;
+    tab.draggable = true;
+    
+    tab.addEventListener('dragstart', (e) => {
+        e.dataTransfer.setData('text/plain', path);
+        tab.classList.add('dragging');
+        setTimeout(() => tab.style.opacity = '0.5', 0);
+    });
+    
+    tab.addEventListener('dragend', () => {
+        tab.classList.remove('dragging');
+        tab.style.opacity = '1';
+    });
+    
+    tab.addEventListener('dragover', (e) => {
+        e.preventDefault();
+        const draggingTab = container.querySelector('.dragging');
+        if (draggingTab && draggingTab !== tab) {
+            const rect = tab.getBoundingClientRect();
+            const offset = e.clientX - rect.left - (rect.width / 2);
+            if (offset < 0) {
+                container.insertBefore(draggingTab, tab);
+            } else {
+                container.insertBefore(draggingTab, tab.nextSibling);
+            }
+        }
+    });
     
     const title = document.createElement('span');
     title.textContent = name;
@@ -569,6 +612,28 @@ function activateTab(path) {
         if (typeof mdPreviewActive !== 'undefined' && mdPreviewActive) {
             if (typeof toggleMdPreview === 'function') toggleMdPreview(); // Force close preview when switching to non-markdown
         }
+    }
+}
+
+function cycleTabs(direction) {
+    const container = document.getElementById('tabs-container');
+    const tabs = Array.from(container.querySelectorAll('.tab'));
+    if (tabs.length <= 1) return;
+    
+    let currentIndex = -1;
+    for (let i = 0; i < tabs.length; i++) {
+        if (tabs[i].classList.contains('active')) {
+            currentIndex = i;
+            break;
+        }
+    }
+    
+    if (currentIndex !== -1) {
+        let nextIndex = (currentIndex + direction) % tabs.length;
+        if (nextIndex < 0) nextIndex = tabs.length - 1;
+        
+        const nextPath = tabs[nextIndex].dataset.path;
+        activateTab(nextPath);
     }
 }
 
@@ -1029,6 +1094,17 @@ async function executeSqlQuery() {
 // 9. Event Listeners & Modals Setup
 function initEventListeners() {
     initUploadEvents();
+    
+    // Global keyboard listener for tab cycling (Alt+. and Alt+,)
+    document.addEventListener('keydown', (e) => {
+        // Only if no modal is active and we're not inside the ace editor (ace handles it)
+        if (e.altKey && (e.key === '.' || e.key === ',')) {
+            e.preventDefault();
+            if (!state.editor || !state.editor.isFocused()) {
+                cycleTabs(e.key === '.' ? 1 : -1);
+            }
+        }
+    });
     
     // New Node Modal Action Trigger
     document.getElementById('new-file-btn').addEventListener('click', () => openNewNodeModal('file'));
