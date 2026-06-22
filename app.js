@@ -7,6 +7,7 @@ const state = {
     openTabs: {},         // filePath -> { path, name, session, isDirty }
     activeTabPath: null,
     selectedNode: null,   // Currently highlighted element in tree { path, isDir }
+    expandedFolders: new Set(),
     activeConnectionId: null,
     terminalHistory: [],
     terminalHistoryIndex: -1,
@@ -335,6 +336,13 @@ async function loadFiles(path = '', container = document.getElementById('file-tr
                     selectTreeNode(row);
                     toggleFolder(row, subUl);
                 });
+                
+                // Restore expanded state automatically
+                if (state.expandedFolders.has(file.path)) {
+                    subUl.classList.remove('hidden');
+                    arrow.textContent = '▼';
+                    loadFiles(file.path, subUl);
+                }
             } else {
                 row.addEventListener('click', (e) => {
                     e.stopPropagation();
@@ -373,11 +381,13 @@ function toggleFolder(row, subUl) {
     if (isCollapsed) {
         subUl.classList.remove('hidden');
         arrow.textContent = '▼';
+        state.expandedFolders.add(row.dataset.path);
         // Reload folder contents on expansion
         loadFiles(row.dataset.path, subUl);
     } else {
         subUl.classList.add('hidden');
         arrow.textContent = '▶';
+        state.expandedFolders.delete(row.dataset.path);
     }
 }
 
@@ -1111,11 +1121,15 @@ function initEventListeners() {
     document.getElementById('new-folder-btn').addEventListener('click', () => openNewNodeModal('dir'));
     
     // Refresh File Tree
+    let refreshTimeout;
     document.getElementById('refresh-tree-btn').addEventListener('click', () => {
-        loadFiles();
-        state.selectedNode = null;
-        document.getElementById('rename-node-btn').disabled = true;
-        document.getElementById('delete-node-btn').disabled = true;
+        clearTimeout(refreshTimeout);
+        refreshTimeout = setTimeout(() => {
+            loadFiles();
+            state.selectedNode = null;
+            document.getElementById('rename-node-btn').disabled = true;
+            document.getElementById('delete-node-btn').disabled = true;
+        }, 100);
     });
     
     // Rename Node
