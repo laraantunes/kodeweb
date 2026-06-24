@@ -14,6 +14,7 @@
     <script src="https://cdnjs.cloudflare.com/ajax/libs/ace/1.32.7/ace.js" referrerpolicy="no-referrer"></script>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/ace/1.32.7/ext-language_tools.min.js" referrerpolicy="no-referrer"></script>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/marked/11.1.1/marked.min.js" referrerpolicy="no-referrer"></script>
+
 </head>
 
 <body>
@@ -600,7 +601,7 @@
     </div>
 
     <!-- Link App Controller JS -->
-    <script src="app.js"></script>
+    <script src="app.js?v=<?= filemtime('app.js') ?>"></script>
 </body>
 
 </html>
