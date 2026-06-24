@@ -2,6 +2,8 @@
 
 **KodeWeb** é uma IDE leve e moderna baseada em PHP e JavaScript, projetada para ser hospedada diretamente em um servidor web. Ela permite gerenciar, criar e editar os arquivos do servidor em tempo real, além de incluir um emulador de terminal interativo e um cliente de banco de dados com credenciais criptografadas.
 
+![Kodeweb IDE](kodeweb-view.png)
+
 ---
 
 ## 🚀 Funcionalidades Principais
