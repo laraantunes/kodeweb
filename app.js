@@ -557,6 +557,14 @@ function createTabUI(path, name) {
     
     tab.addEventListener('click', () => activateTab(path));
     
+    tab.addEventListener('mousedown', (e) => {
+        if (e.button === 1) { // Middle click
+            e.preventDefault();
+            e.stopPropagation();
+            closeTab(path);
+        }
+    });
+    
     container.appendChild(tab);
 }
 
