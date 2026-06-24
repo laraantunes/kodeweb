@@ -1,3 +1,4 @@
+<?php require_once('config.php') ?>
 <!DOCTYPE html>
 <html lang="pt-br">
 
@@ -23,6 +24,7 @@
             <img src="logo.svg" alt="KodeWeb Logo"
                 style="height: 28px; width: 28px; vertical-align: middle; margin-right: 6px;">
             <span class="app-title">KodeWeb IDE</span>
+            <?= ($local) ? "<span style=color:red>LOCAL</span>" : "" ?>
         </div>
 
         <!-- File Breadcrumb -->

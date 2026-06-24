@@ -18,3 +18,5 @@ tmp/
 *.njsproj
 *.sln
 *.swp
+
+config.php
