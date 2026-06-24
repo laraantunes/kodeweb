@@ -145,7 +145,7 @@ try {
             break;
 
         case 'file_read':
-            $relativePath = $_GET['path'] ?? '';
+            $relativePath = $_POST['path'] ?? $_GET['path'] ?? '';
             $absPath = get_absolute_path($relativePath);
             
             if (!file_exists($absPath) || is_dir($absPath)) {

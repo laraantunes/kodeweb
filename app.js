@@ -476,7 +476,13 @@ async function openFile(path, name) {
     }
     
     try {
-        const response = await fetch(`api.php?action=file_read&path=${encodeURIComponent(path)}`);
+        const formData = new FormData();
+        formData.append('action', 'file_read');
+        formData.append('path', path);
+        const response = await fetch('api.php', {
+            method: 'POST',
+            body: formData
+        });
         const data = await response.json();
         if (!data.success) throw new Error(data.message);
         
