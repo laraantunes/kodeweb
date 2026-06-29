@@ -2442,6 +2442,63 @@ function initUploadEvents() {
         handleFiles(this.files);
         this.value = ''; // Reset
     });
+
+    // File Tree drag and drop
+    const fileTreeRoot = document.getElementById('file-tree-root');
+    if (fileTreeRoot) {
+        ['dragenter', 'dragover', 'dragleave', 'drop'].forEach(eventName => {
+            fileTreeRoot.addEventListener(eventName, preventDefaults, false);
+        });
+
+        fileTreeRoot.addEventListener('dragover', (e) => {
+            document.querySelectorAll('.tree-row.drag-over').forEach(el => el.classList.remove('drag-over'));
+            const row = e.target.closest('.tree-row');
+            if (row && row.dataset.isDir === 'true') {
+                row.classList.add('drag-over');
+            } else {
+                fileTreeRoot.classList.add('drag-over');
+            }
+        });
+
+        fileTreeRoot.addEventListener('dragleave', (e) => {
+            const row = e.target.closest('.tree-row');
+            if (row) {
+                row.classList.remove('drag-over');
+            }
+            if (e.target === fileTreeRoot) {
+                fileTreeRoot.classList.remove('drag-over');
+            }
+        });
+
+        fileTreeRoot.addEventListener('drop', (e) => {
+            document.querySelectorAll('.tree-row.drag-over').forEach(el => el.classList.remove('drag-over'));
+            fileTreeRoot.classList.remove('drag-over');
+            
+            const dt = e.dataTransfer;
+            // Check if there are items or files
+            if (!dt || (!dt.items.length && !dt.files.length)) return;
+            
+            let targetPath = '';
+            const row = e.target.closest('.tree-row');
+            if (row) {
+                if (row.dataset.isDir === 'true') {
+                    targetPath = row.dataset.path;
+                } else {
+                    const pathParts = row.dataset.path.split(/[\/\\]/);
+                    pathParts.pop();
+                    targetPath = pathParts.join('/');
+                }
+            }
+            
+            openUploadModal(targetPath);
+            
+            if (dt.items && dt.items.length > 0) {
+                handleDropItems(dt.items);
+            } else if (dt.files && dt.files.length > 0) {
+                handleFiles(dt.files);
+            }
+        });
+    }
 }
 
 function handleDropItems(items) {
