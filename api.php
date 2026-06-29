@@ -1,8 +1,9 @@
 <?php
 // api.php - Backend API for KodeWeb IDE
 header('Content-Type: application/json; charset=utf-8');
-session_start();
 
+define('IS_API', true);
+require_once __DIR__ . '/auth.php';
 require_once __DIR__ . '/encryption.php';
 
 // Define the root workspace path (parent of kodeweb directory)

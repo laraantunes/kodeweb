@@ -1,4 +1,7 @@
-<?php require_once('config.php') ?>
+<?php 
+require_once('auth.php');
+require_once('config.php'); 
+?>
 <!DOCTYPE html>
 <html lang="pt-br">
 
@@ -48,6 +51,9 @@
             </button>
             <button class="toggle-btn tooltip-right" id="help-btn" data-tooltip="Atalhos e Ajuda">
                 <span>❓</span> Ajuda
+            </button>
+            <button class="toggle-btn" id="logout-btn" onclick="window.location.href='logout.php'" style="margin-left: 10px; color: var(--accent-danger); border-color: var(--accent-danger);">
+                <span>🚪</span> Sair
             </button>
         </div>
     </header>

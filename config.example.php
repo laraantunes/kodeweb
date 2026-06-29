@@ -1,3 +1,0 @@
-<?php
-
-$local = false;

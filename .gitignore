@@ -1,6 +1,7 @@
 # Security Keys & Credentials
 .key
-.htpasswd
+.env
+data/
 
 # Encrypted Database Connection Profiles
 connections/*.enc
@@ -18,5 +19,3 @@ tmp/
 *.njsproj
 *.sln
 *.swp
-
-config.php

@@ -36,21 +36,20 @@
 ### 1. Clonar ou Fazer Upload
 Mova a pasta `kodeweb` inteira para a raiz do seu servidor web (por exemplo, `/var/www/html/kodeweb` ou `/srv/http/kodeweb`).
 
-### 2. Configurar Segurança Básica (Autenticação htaccess)
-A IDE vem configurada com segurança via `.htaccess` e um arquivo `.htpasswd` para proteger contra acessos não autorizados.
+### 2. Instalação e Criação de Usuário
+A IDE possui um sistema de instalação e login integrado para proteger o acesso.
 
-*   **Credenciais Padrão**:
-    *   **Usuário**: `admin`
-    *   **Senha**: `admin`
-
-Para alterar a senha padrão ou cadastrar um novo usuário pelo terminal, execute o seguinte comando no diretório da IDE:
-```bash
-htpasswd -b .htpasswd username password
-```
+Para realizar a configuração inicial:
+1. Acesse a pasta da IDE no seu navegador (ex: `http://localhost/kodeweb`).
+2. Você será redirecionado automaticamente para a página de **Instalação**.
+3. Defina seu **Usuário** e **Senha**. Esta etapa cria um arquivo criptografado (`data/auth.enc`) para armazenar suas credenciais com segurança.
+4. Defina se o ambiente é local (gerando um arquivo `.env` para configurações internas).
+5. Após instalar, faça o login para acessar a interface da IDE. Caso deseje alterar a senha no futuro, basta acessar manualmente a página `install.php` para recriar suas credenciais.
 
 ### 3. Permissões de Pastas e Arquivos
 Para que a IDE possa ler e salvar alterações, o usuário do servidor web (ex: `www-data` ou `http`) deve possuir permissão de escrita nas seguintes pastas:
-*   `kodeweb/` (necessário para criar a chave de segurança `.key` no primeiro acesso e salvar conexões).
+*   `kodeweb/` (necessário para criar a chave de segurança `.key` no primeiro acesso, o arquivo `.env` e a pasta `data/`).
+*   `kodeweb/data/` (onde as credenciais criptografadas de login ficam armazenadas).
 *   `kodeweb/connections/` (onde são armazenados os arquivos de conexão criptografados).
 *   O diretório pai/workspace que deseja editar no servidor.
 
