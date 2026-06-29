@@ -810,6 +810,7 @@ function proceedCloseTab(path) {
             if(document.getElementById('image-preview-container')) document.getElementById('image-preview-container').classList.add('hidden');
             if(document.getElementById('pdf-preview-container')) document.getElementById('pdf-preview-container').classList.add('hidden');
             document.getElementById('db-explorer-container').classList.add('hidden');
+            if(document.getElementById('ftp-explorer-container')) document.getElementById('ftp-explorer-container').classList.add('hidden');
             updateBreadcrumb('');
         }
     }
@@ -3605,64 +3606,70 @@ async function transferLocalToFtp(localPathStr, connId, targetDir) {
             return;
         }
         
-        showToast(`Iniciando transferência de ${filesToTransfer.length} arquivos...`, "info");
-        
         let successCount = 0;
         let errorCount = 0;
+        let processedCount = 0;
+        const totalFiles = filesToTransfer.length;
         
         const progressContainer = document.getElementById("upload-progress-container");
         document.getElementById("modal-upload").classList.add("active");
-        progressContainer.innerHTML = `<h4 style="margin-bottom:10px;">Transferindo ${filesToTransfer.length} arquivos para o FTP...</h4>`;
-        
+        progressContainer.innerHTML = `<h4 style="margin-bottom:10px;">Transferindo ${totalFiles} arquivos para o FTP...</h4>
+                                       <div id="batch-progress" style="margin-bottom: 10px; font-weight: bold;">Preparando lotes...</div>`;
+        const batchProgressEl = document.getElementById("batch-progress");
+
         const localPathSegments = localPathStr.replace(/\\/g, "/").split("/");
-        localPathSegments.pop(); // Remove the item's own name to get its parent directory
+        localPathSegments.pop();
         const localParentDir = localPathSegments.join("/");
-        
-        for (const file of filesToTransfer) {
-            let relPath = file.path.replace(/\\/g, "/");
+
+        // Batch files into chunks of 100
+        const batchSize = 100;
+        for (let i = 0; i < totalFiles; i += batchSize) {
+            const batch = filesToTransfer.slice(i, i + batchSize);
+            const batchPayload = [];
             
-            let finalRelPath = relPath;
-            if (localParentDir && relPath.startsWith(localParentDir + "/")) {
-                finalRelPath = relPath.substring(localParentDir.length + 1);
-            } else if (localParentDir === "" && relPath.startsWith("/")) {
-                finalRelPath = relPath.substring(1);
+            for (const file of batch) {
+                let relPath = file.path.replace(/\\/g, "/");
+                
+                let finalRelPath = relPath;
+                if (localParentDir && relPath.startsWith(localParentDir + "/")) {
+                    finalRelPath = relPath.substring(localParentDir.length + 1);
+                } else if (localParentDir === "" && relPath.startsWith("/")) {
+                    finalRelPath = relPath.substring(1);
+                }
+                
+                let ftpDestPath = (targetDir === "/" ? "" : targetDir) + "/" + finalRelPath;
+                ftpDestPath = ftpDestPath.replace(/\/+/g, "/");
+                
+                batchPayload.push({
+                    local_path: file.path,
+                    ftp_path: ftpDestPath
+                });
             }
             
-            let ftpDestPath = (targetDir === "/" ? "" : targetDir) + "/" + finalRelPath;
-            ftpDestPath = ftpDestPath.replace(/\/+/g, "/");
-            
-            const itemDiv = document.createElement("div");
-            itemDiv.style.display = "flex";
-            itemDiv.style.justifyContent = "space-between";
-            itemDiv.style.marginBottom = "5px";
-            itemDiv.style.fontSize = "12px";
-            itemDiv.innerHTML = `<span>${escapeHTML(file.name)}</span><span style="color:var(--text-muted);">Transferindo...</span>`;
-            progressContainer.appendChild(itemDiv);
-            progressContainer.scrollTop = progressContainer.scrollHeight;
+            batchProgressEl.innerHTML = `Transferindo lote ${Math.floor(i/batchSize) + 1} de ${Math.ceil(totalFiles/batchSize)}... (${processedCount}/${totalFiles})`;
             
             const tfData = new FormData();
-            tfData.append("action", "ftp_transfer_local");
+            tfData.append("action", "ftp_transfer_batch_local");
             tfData.append("connection_id", connId);
-            tfData.append("local_path", file.path);
-            tfData.append("ftp_path", ftpDestPath);
+            tfData.append("files", JSON.stringify(batchPayload));
             
             try {
                 const trRes = await fetch("api.php", { method: "POST", body: tfData });
                 const trData = await trRes.json();
-                if (trData.success) {
-                    itemDiv.querySelector("span:last-child").textContent = "✅ Sucesso";
-                    itemDiv.querySelector("span:last-child").style.color = "var(--accent-success)";
-                    successCount++;
+                if (trData.success && trData.results) {
+                    for (const result of trData.results) {
+                        if (result.success) successCount++;
+                        else errorCount++;
+                    }
                 } else {
-                    itemDiv.querySelector("span:last-child").textContent = "❌ Erro";
-                    itemDiv.querySelector("span:last-child").style.color = "var(--accent-danger)";
-                    errorCount++;
+                    errorCount += batch.length;
                 }
             } catch (e) {
-                itemDiv.querySelector("span:last-child").textContent = "❌ Falhou";
-                itemDiv.querySelector("span:last-child").style.color = "var(--accent-danger)";
-                errorCount++;
+                errorCount += batch.length;
             }
+            
+            processedCount += batch.length;
+            batchProgressEl.innerHTML = `Processado ${processedCount}/${totalFiles}...`;
         }
         
         showToast(`Transferência concluída: ${successCount} sucesso, ${errorCount} erros.`, successCount > 0 ? "success" : "error");
@@ -3734,64 +3741,72 @@ async function transferFtpToLocal(ftpPathStr, targetDir) {
         
         let successCount = 0;
         let errorCount = 0;
+        let processedCount = 0;
+        const totalFiles = filesToTransfer.length;
         
         const progressContainer = document.getElementById("upload-progress-container");
         document.getElementById("modal-upload").classList.add("active");
-        progressContainer.innerHTML = `<h4 style="margin-bottom:10px;">Baixando ${filesToTransfer.length} arquivos do FTP...</h4>`;
+        progressContainer.innerHTML = `<h4 style="margin-bottom:10px;">Baixando ${totalFiles} arquivos do FTP...</h4>
+                                       <div id="batch-progress" style="margin-bottom: 10px; font-weight: bold;">Preparando lotes...</div>`;
+        const batchProgressEl = document.getElementById("batch-progress");
         
         const ftpPathSegments = ftpPath.split("/").filter(s => s);
         ftpPathSegments.pop(); // Remove the item's own name to get its parent directory
         const ftpParentDir = ftpPathSegments.join("/");
         
-        for (const file of filesToTransfer) {
-            let relPath = file.path.replace(/\\/g, "/");
+        // Batch files into chunks of 100
+        const batchSize = 100;
+        for (let i = 0; i < totalFiles; i += batchSize) {
+            const batch = filesToTransfer.slice(i, i + batchSize);
+            const batchPayload = [];
             
-            let finalRelPath = relPath;
-            if (ftpParentDir && relPath.startsWith(ftpParentDir + "/")) {
-                finalRelPath = relPath.substring(ftpParentDir.length + 1);
-            } else if (ftpParentDir === "" && relPath.startsWith("/")) {
-                finalRelPath = relPath.substring(1);
+            for (const file of batch) {
+                let relPath = file.path.replace(/\\/g, "/");
+                
+                let finalRelPath = relPath;
+                if (ftpParentDir && relPath.startsWith(ftpParentDir + "/")) {
+                    finalRelPath = relPath.substring(ftpParentDir.length + 1);
+                } else if (ftpParentDir === "" && relPath.startsWith("/")) {
+                    finalRelPath = relPath.substring(1);
+                }
+                
+                let localDestPath = (targetDir === "/" || targetDir === "" ? "" : targetDir) + "/" + finalRelPath;
+                localDestPath = localDestPath.replace(/\/+/g, "/");
+                if (localDestPath.startsWith("/")) localDestPath = localDestPath.substring(1);
+                
+                let fullFtpFilePath = (ftpPath.endsWith(relPath) ? ftpPath : ftpPath + '/' + relPath).replace(/\/+/g, "/");
+                if (filesToTransfer.length === 1) fullFtpFilePath = ftpPath;
+                
+                batchPayload.push({
+                    ftp_path: fullFtpFilePath,
+                    local_path: localDestPath
+                });
             }
             
-            let localDestPath = (targetDir === "/" || targetDir === "" ? "" : targetDir) + "/" + finalRelPath;
-            localDestPath = localDestPath.replace(/\/+/g, "/");
-            if (localDestPath.startsWith("/")) localDestPath = localDestPath.substring(1);
-            
-            const itemDiv = document.createElement("div");
-            itemDiv.style.display = "flex";
-            itemDiv.style.justifyContent = "space-between";
-            itemDiv.style.marginBottom = "5px";
-            itemDiv.style.fontSize = "12px";
-            itemDiv.innerHTML = `<span>${escapeHTML(file.name)}</span><span style="color:var(--text-muted);">Baixando...</span>`;
-            progressContainer.appendChild(itemDiv);
-            progressContainer.scrollTop = progressContainer.scrollHeight;
-            
-            let fullFtpFilePath = (ftpPath.endsWith(relPath) ? ftpPath : ftpPath + '/' + relPath).replace(/\/+/g, "/");
-            if (filesToTransfer.length === 1) fullFtpFilePath = ftpPath;
+            batchProgressEl.innerHTML = `Baixando lote ${Math.floor(i/batchSize) + 1} de ${Math.ceil(totalFiles/batchSize)}... (${processedCount}/${totalFiles})`;
             
             const tfData = new FormData();
-            tfData.append("action", "ftp_transfer_remote");
+            tfData.append("action", "ftp_transfer_batch_remote");
             tfData.append("connection_id", connId);
-            tfData.append("ftp_path", fullFtpFilePath);
-            tfData.append("local_path", localDestPath);
+            tfData.append("files", JSON.stringify(batchPayload));
             
             try {
                 const trRes = await fetch("api.php", { method: "POST", body: tfData });
                 const trData = await trRes.json();
-                if (trData.success) {
-                    itemDiv.querySelector("span:last-child").textContent = "✅ Sucesso";
-                    itemDiv.querySelector("span:last-child").style.color = "var(--accent-success)";
-                    successCount++;
+                if (trData.success && trData.results) {
+                    for (const result of trData.results) {
+                        if (result.success) successCount++;
+                        else errorCount++;
+                    }
                 } else {
-                    itemDiv.querySelector("span:last-child").textContent = "❌ Erro";
-                    itemDiv.querySelector("span:last-child").style.color = "var(--accent-danger)";
-                    errorCount++;
+                    errorCount += batch.length;
                 }
             } catch (e) {
-                itemDiv.querySelector("span:last-child").textContent = "❌ Falhou";
-                itemDiv.querySelector("span:last-child").style.color = "var(--accent-danger)";
-                errorCount++;
+                errorCount += batch.length;
             }
+            
+            processedCount += batch.length;
+            batchProgressEl.innerHTML = `Processado ${processedCount}/${totalFiles}...`;
         }
         
         showToast(`Transferência concluída: ${successCount} sucesso, ${errorCount} erros.`, successCount > 0 ? "success" : "error");

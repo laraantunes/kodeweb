@@ -1204,6 +1204,56 @@ try {
             }
             break;
 
+        case 'ftp_transfer_batch_local':
+            $connection_id = $_POST['connection_id'] ?? '';
+            $files_json = $_POST['files'] ?? '[]';
+            
+            $files = json_decode($files_json, true);
+            if (!is_array($files)) {
+                throw new Exception("Formato de arquivos inválido.");
+            }
+            
+            $connInfo = get_ftp_connection($connection_id);
+            $ftp = connect_ftp($connInfo);
+            
+            // Cache created dirs to avoid redundant mkdir calls
+            $createdDirs = [];
+            $results = [];
+            
+            foreach ($files as $file) {
+                $local_path = $file['local_path'];
+                $ftp_path = $file['ftp_path'];
+                
+                $absLocalPath = get_absolute_path($local_path);
+                if (!file_exists($absLocalPath) || is_dir($absLocalPath)) {
+                    $results[] = ['file' => $local_path, 'success' => false, 'error' => 'Not found or is dir'];
+                    continue;
+                }
+                
+                $dirParts = explode('/', dirname($ftp_path));
+                $currentDir = '';
+                if (dirname($ftp_path) !== '.' && dirname($ftp_path) !== '') {
+                    foreach ($dirParts as $part) {
+                        if (empty($part) || $part === '.') continue;
+                        $currentDir .= '/' . $part;
+                        if (!isset($createdDirs[$currentDir])) {
+                            @ftp_mkdir($ftp, $currentDir);
+                            $createdDirs[$currentDir] = true;
+                        }
+                    }
+                }
+                
+                if (@ftp_put($ftp, $ftp_path, $absLocalPath, FTP_BINARY)) {
+                    $results[] = ['file' => $local_path, 'success' => true];
+                } else {
+                    $results[] = ['file' => $local_path, 'success' => false];
+                }
+            }
+            
+            ftp_close($ftp);
+            echo json_encode(['success' => true, 'results' => $results]);
+            break;
+
         case 'ftp_transfer_local':
             $connection_id = $_POST['connection_id'] ?? '';
             $local_path = $_POST['local_path'] ?? '';
@@ -1243,6 +1293,40 @@ try {
                 ftp_close($ftp);
                 throw new Exception("Erro ao enviar arquivo para o FTP: " . $errMsg);
             }
+            break;
+
+        case 'ftp_transfer_batch_remote':
+            $connection_id = $_POST['connection_id'] ?? '';
+            $files_json = $_POST['files'] ?? '[]';
+            
+            $files = json_decode($files_json, true);
+            if (!is_array($files)) {
+                throw new Exception("Formato de arquivos inválido.");
+            }
+            
+            $connInfo = get_ftp_connection($connection_id);
+            $ftp = connect_ftp($connInfo);
+            
+            $results = [];
+            foreach ($files as $file) {
+                $ftp_path = $file['ftp_path'];
+                $local_path = $file['local_path'];
+                
+                $absLocalPath = get_absolute_path($local_path);
+                $dir = dirname($absLocalPath);
+                if (!is_dir($dir)) {
+                    mkdir($dir, 0777, true);
+                }
+                
+                if (@ftp_get($ftp, $absLocalPath, $ftp_path, FTP_BINARY)) {
+                    $results[] = ['file' => $local_path, 'success' => true];
+                } else {
+                    $results[] = ['file' => $local_path, 'success' => false];
+                }
+            }
+            
+            ftp_close($ftp);
+            echo json_encode(['success' => true, 'results' => $results]);
             break;
 
         case 'ftp_transfer_remote':
