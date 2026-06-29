@@ -172,6 +172,11 @@ require_once('config.php');
                             <div id="image-preview-info" style="margin-top: 15px; color: var(--text-muted); font-size: 12px; font-family: var(--font-mono);"></div>
                         </div>
                     </div>
+
+                    <!-- PDF Preview Container -->
+                    <div id="pdf-preview-container" class="hidden" style="position: absolute; top: 0; left: 0; right: 0; bottom: 0; background-color: var(--bg-primary); z-index: 5;">
+                        <iframe id="pdf-preview-element" src="" style="width: 100%; height: 100%; border: none;"></iframe>
+                    </div>
                     
                     <!-- Markdown Preview Container -->
                     <div id="md-preview-container" class="hidden" style="position: absolute; top: 0; right: 0; bottom: 0; width: 50%; border-left: 1px solid var(--border-color); background: var(--bg-primary); z-index: 4; overflow-y: auto; padding: 20px;">

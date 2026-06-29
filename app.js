@@ -38,6 +38,7 @@ document.addEventListener('DOMContentLoaded', () => {
     loadFiles();
     loadDbConnections();
     initEventListeners();
+    initLocalFileDrop();
     
     restorePanelsState();
     restoreTabsState();
@@ -479,12 +480,14 @@ async function openFile(path, name) {
     
     const ext = name.split('.').pop().toLowerCase();
     const isImage = ['png', 'jpg', 'jpeg', 'gif', 'svg', 'webp', 'ico', 'bmp'].includes(ext);
+    const isPdf = ext === 'pdf';
     
-    if (isImage) {
+    if (isImage || isPdf) {
         state.openTabs[path] = {
             path: path,
             name: name,
-            isImage: true,
+            isImage: isImage,
+            isPdf: isPdf,
             isDirty: false
         };
         createTabUI(path, name);
@@ -628,22 +631,44 @@ function activateTab(path) {
         // Hide db explorer
         document.getElementById('db-explorer-container').classList.add('hidden');
         
+        const editorEl = document.getElementById('editor');
+        const placeholderEl = document.getElementById('no-file-placeholder');
+        const imgContainer = document.getElementById('image-preview-container');
+        const pdfContainer = document.getElementById('pdf-preview-container');
+        
         if (tabInfo && tabInfo.isImage) {
-            document.getElementById('editor').classList.add('hidden');
-            document.getElementById('no-file-placeholder').classList.add('hidden');
+            editorEl.classList.add('hidden');
+            placeholderEl.classList.add('hidden');
+            pdfContainer.classList.add('hidden');
             
-            const imgContainer = document.getElementById('image-preview-container');
             const imgEl = document.getElementById('image-preview-element');
             const infoEl = document.getElementById('image-preview-info');
             
             imgEl.onload = function() {
                 infoEl.textContent = `${this.naturalWidth} x ${this.naturalHeight} pixels`;
             };
-            // Add a cache buster if it's an image that might change
-            imgEl.src = `api.php?action=file_serve&path=${encodeURIComponent(path)}&_t=${new Date().getTime()}`;
+            
+            if (tabInfo.isLocal) {
+                imgEl.src = tabInfo.localDataUrl;
+            } else {
+                imgEl.src = `api.php?action=file_serve&path=${encodeURIComponent(path)}&_t=${new Date().getTime()}`;
+            }
             imgContainer.classList.remove('hidden');
+        } else if (tabInfo && tabInfo.isPdf) {
+            editorEl.classList.add('hidden');
+            placeholderEl.classList.add('hidden');
+            imgContainer.classList.add('hidden');
+            
+            const pdfEl = document.getElementById('pdf-preview-element');
+            if (tabInfo.isLocal) {
+                pdfEl.src = tabInfo.localDataUrl;
+            } else {
+                pdfEl.src = `api.php?action=file_serve&path=${encodeURIComponent(path)}&_t=${new Date().getTime()}`;
+            }
+            pdfContainer.classList.remove('hidden');
         } else if (tabInfo) {
-            if(document.getElementById('image-preview-container')) document.getElementById('image-preview-container').classList.add('hidden');
+            if(imgContainer) imgContainer.classList.add('hidden');
+            if(pdfContainer) pdfContainer.classList.add('hidden');
             // Swap Ace session
             state.editor.setSession(tabInfo.session);
             state.editor.focus();
@@ -723,6 +748,7 @@ function proceedCloseTab(path) {
             document.getElementById('no-file-placeholder').classList.remove('hidden');
             document.getElementById('editor').classList.add('hidden');
             if(document.getElementById('image-preview-container')) document.getElementById('image-preview-container').classList.add('hidden');
+            if(document.getElementById('pdf-preview-container')) document.getElementById('pdf-preview-container').classList.add('hidden');
             document.getElementById('db-explorer-container').classList.add('hidden');
             updateBreadcrumb('');
         }
@@ -742,6 +768,26 @@ async function saveActiveFile() {
     
     const tab = state.openTabs[state.activeTabPath];
     const content = state.editor.getValue();
+    
+    if (tab.isLocal) {
+        // Trigger download
+        const blob = new Blob([content], { type: 'text/plain' });
+        const url = URL.createObjectURL(blob);
+        const a = document.createElement('a');
+        a.href = url;
+        a.download = tab.name;
+        document.body.appendChild(a);
+        a.click();
+        document.body.removeChild(a);
+        URL.revokeObjectURL(url);
+        
+        tab.isDirty = false;
+        tab.session.getUndoManager().markClean();
+        updateTabUI(tab.path);
+        localStorage.removeItem('kodeweb_dirty_' + tab.path);
+        showToast("Arquivo baixado com sucesso.", "success");
+        return;
+    }
     
     const formData = new FormData();
     formData.append('action', 'file_save');
@@ -2758,16 +2804,19 @@ function saveTabsState() {
         const tabsData = [];
         Object.keys(state.openTabs).forEach(path => {
             const t = state.openTabs[path];
+            if (t.isLocal && (t.isImage || t.isPdf)) return; // Do not persist local images or pdfs
             tabsData.push({
                 path: t.path,
                 name: t.name,
                 isSpecial: t.isSpecial || false,
-                isImage: t.isImage || false
+                isImage: t.isImage || false,
+                isPdf: t.isPdf || false,
+                isLocal: t.isLocal || false
             });
         });
         localStorage.setItem('kodeweb_tabs', JSON.stringify({
             tabs: tabsData,
-            active: state.activeTabPath
+            active: state.activeTabPath && state.openTabs[state.activeTabPath] && !(state.openTabs[state.activeTabPath].isLocal && (state.openTabs[state.activeTabPath].isImage || state.openTabs[state.activeTabPath].isPdf)) ? state.activeTabPath : null
         }));
     }, 200);
 }
@@ -2779,6 +2828,11 @@ async function restoreTabsState() {
             for (const t of saved.tabs) {
                 if (t.isSpecial && t.path === 'db_explorer') {
                     openDbExplorer();
+                } else if (t.isLocal) {
+                    const content = localStorage.getItem('kodeweb_dirty_' + t.path);
+                    if (content !== null) {
+                        openLocalFile({ name: t.name, type: 'text/plain' }, content, t.path);
+                    }
                 } else {
                     await openFile(t.path, t.name);
                 }
@@ -2788,6 +2842,95 @@ async function restoreTabsState() {
             }
         }
     } catch(e) {}
+}
+
+function initLocalFileDrop() {
+    const editorWrapper = document.querySelector('.editor-wrapper');
+    if (!editorWrapper) return;
+    
+    ['dragenter', 'dragover', 'dragleave', 'drop'].forEach(eventName => {
+        editorWrapper.addEventListener(eventName, e => {
+            e.preventDefault();
+            e.stopPropagation();
+        });
+    });
+    
+    editorWrapper.addEventListener('dragover', () => {
+        editorWrapper.classList.add('drag-over');
+    });
+    
+    editorWrapper.addEventListener('dragleave', (e) => {
+        if (!editorWrapper.contains(e.relatedTarget)) {
+            editorWrapper.classList.remove('drag-over');
+        }
+    });
+    
+    editorWrapper.addEventListener('drop', (e) => {
+        editorWrapper.classList.remove('drag-over');
+        
+        const dt = e.dataTransfer;
+        if (!dt || !dt.files || dt.files.length === 0) return;
+        
+        Array.from(dt.files).forEach(file => {
+            const reader = new FileReader();
+            const isImg = file.type.startsWith('image/');
+            const isPdf = file.type === 'application/pdf' || file.name.toLowerCase().endsWith('.pdf');
+            reader.onload = (event) => {
+                const content = event.target.result;
+                openLocalFile(file, content);
+            };
+            if (isImg || isPdf) {
+                reader.readAsDataURL(file);
+            } else {
+                reader.readAsText(file);
+            }
+        });
+    });
+}
+
+function openLocalFile(file, content, overridePath = null) {
+    const name = file.name;
+    const path = overridePath || ('local://' + Date.now() + '_' + name);
+    
+    const ext = name.split('.').pop().toLowerCase();
+    const isImg = file.type ? file.type.startsWith('image/') : ['png', 'jpg', 'jpeg', 'gif', 'svg', 'webp', 'ico', 'bmp'].includes(ext);
+    const isPdf = file.type === 'application/pdf' || ext === 'pdf';
+    
+    if (isImg || isPdf) {
+        state.openTabs[path] = {
+            path: path,
+            name: name,
+            isImage: isImg,
+            isPdf: isPdf,
+            isDirty: false,
+            isLocal: true,
+            localDataUrl: content
+        };
+        createTabUI(path, name);
+        activateTab(path);
+        saveTabsState();
+        return;
+    }
+    
+    const mode = getAceMode(ext);
+    const session = ace.createEditSession(content, mode);
+    session.setUndoManager(new ace.UndoManager());
+    
+    state.openTabs[path] = {
+        path: path,
+        name: name,
+        session: session,
+        isImage: false,
+        isDirty: true, // Local files are always "unsaved" relative to server
+        isLocal: true
+    };
+    
+    localStorage.setItem('kodeweb_dirty_' + path, content);
+    
+    createTabUI(path, name);
+    activateTab(path);
+    updateTabUI(path);
+    saveTabsState();
 }
 
 // 15. Markdown Preview Logic
