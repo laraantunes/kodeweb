@@ -389,7 +389,7 @@ body {
 .tree-row {
     display: flex;
     align-items: center;
-    padding: 6px 4px;
+    padding: 6px 4px 6px 20px;
     cursor: pointer;
     border-radius: 3px;
     transition: background 0.1s;
@@ -418,7 +418,7 @@ body {
 }
 
 .tree-indent {
-    width: 14px;
+    width: 24px;
     flex-shrink: 0;
     display: inline-block;
 }

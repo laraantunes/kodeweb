@@ -45,9 +45,11 @@ require_once('config.php');
                 data-tooltip="Exibir/Ocultar Terminal">
                 <span>🖥️</span> Terminal
             </button>
-            <button class="toggle-btn active tooltip-right" id="toggle-right-btn"
-                data-tooltip="Exibir/Ocultar Banco de Dados">
+            <button class="toggle-btn active tooltip-right" id="toggle-right-btn" data-tooltip="Exibir/Ocultar Banco de Dados">
                 <span>🔌</span> Banco de Dados
+            </button>
+            <button class="toggle-btn tooltip-right" id="ftp-connections-btn" data-tooltip="Gerenciador FTP">
+                <span>🌐</span> FTP
             </button>
             <button class="toggle-btn tooltip-right" id="help-btn" data-tooltip="Atalhos e Ajuda">
                 <span>❓</span> Ajuda
@@ -284,6 +286,31 @@ require_once('config.php');
                             </div>
                         </main>
                     </div>
+                    
+                    <!-- FTP Explorer Panel -->
+                    <div id="ftp-explorer-container" class="hidden" style="position: absolute; top: 0; left: 0; right: 0; bottom: 0; background-color: var(--bg-primary); z-index: 5; overflow-y: auto; padding: 20px;">
+                        <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 20px; padding-bottom: 10px; border-bottom: 1px solid var(--border-color);">
+                            <h3 id="ftp-explorer-title" style="margin: 0; color: var(--text-primary); display: flex; align-items: center; gap: 8px;">
+                                <span style="font-size: 20px;">🌐</span> Conexão FTP
+                            </h3>
+                            <div style="display: flex; gap: 8px;">
+                                <button class="btn btn-sm btn-primary" id="ftp-new-file-btn" data-tooltip="Novo Arquivo">📄+</button>
+                                <button class="btn btn-sm btn-primary" id="ftp-new-folder-btn" data-tooltip="Nova Pasta">📁+</button>
+                                <button class="btn btn-sm" id="ftp-refresh-btn" data-tooltip="Atualizar">🔄</button>
+                            </div>
+                        </div>
+                        
+                        <div class="ftp-tree-wrapper" style="background: var(--bg-secondary); border: 1px solid var(--border-color); border-radius: 6px; min-height: calc(100% - 70px); padding: 15px; overflow-y: auto;">
+                            <!-- Drag and drop zone inside FTP -->
+                            <div id="ftp-drop-zone" style="min-height: 100%;">
+                                <ul class="file-tree" id="ftp-tree-root" style="padding: 0;">
+                                    <li style="color: var(--text-muted); font-size:12px; text-align:center; padding-top:20px;">
+                                        Carregando arquivos do FTP...
+                                    </li>
+                                </ul>
+                            </div>
+                        </div>
+                    </div>
                 </div>
             </section>
 
@@ -356,7 +383,6 @@ require_once('config.php');
 
             </div>
         </aside>
-
     </div>
 
     <!-- Modal for Database Connections -->
@@ -408,6 +434,67 @@ require_once('config.php');
                     <button type="submit" class="btn btn-primary">Salvar Conexão</button>
                 </div>
             </form>
+        </div>
+    </div>
+
+    <!-- Modal for FTP Connections -->
+    <div class="modal-overlay" id="modal-ftp-connection">
+        <div class="modal-content" style="width: 450px;">
+            <h3 class="modal-header">Gerenciador FTP</h3>
+            
+            <div class="db-table-tabs" style="margin-bottom: 15px; justify-content: flex-start; gap: 10px;">
+                <button class="db-tab-btn active" id="ftp-tab-list-btn" onclick="switchFtpModalTab('list')" style="border-radius: 4px;">Armazenadas</button>
+                <button class="db-tab-btn" id="ftp-tab-form-btn" onclick="switchFtpModalTab('form')" style="border-radius: 4px;">Nova Conexão</button>
+            </div>
+            
+            <div id="ftp-modal-list-view">
+                <ul id="ftp-connections-list" style="list-style:none; padding:0; margin:0; max-height: 300px; overflow-y: auto; background: var(--bg-secondary); border: 1px solid var(--border-color); border-radius: 6px;">
+                    <li style="color:var(--text-muted); font-size:12px; text-align:center; padding:15px;">Carregando conexões...</li>
+                </ul>
+            </div>
+            
+            <div id="ftp-modal-form-view" class="hidden">
+                <form id="form-ftp-connection">
+                    <input type="hidden" id="ftp-conn-id">
+
+                    <div class="form-group">
+                        <label class="form-label" for="ftp-conn-name">Nome da Conexão</label>
+                        <input type="text" class="form-input" id="ftp-conn-name" placeholder="ex: Servidor de Produção" required>
+                    </div>
+
+                    <div style="display:flex; gap:10px;">
+                        <div class="form-group" style="flex:3;">
+                            <label class="form-label" for="ftp-host">IP / Host</label>
+                            <input type="text" class="form-input" id="ftp-host" placeholder="ftp.site.com" required>
+                        </div>
+
+                        <div class="form-group" style="flex:1;">
+                            <label class="form-label" for="ftp-port">Porta</label>
+                            <input type="number" class="form-input" id="ftp-port" placeholder="21">
+                        </div>
+                    </div>
+
+                    <div class="form-group">
+                        <label class="form-label" for="ftp-username">Usuário</label>
+                        <input type="text" class="form-input" id="ftp-username" placeholder="meu_user" required>
+                    </div>
+
+                    <div class="form-group">
+                        <label class="form-label" for="ftp-password">Senha (Criptografada no Servidor)</label>
+                        <input type="password" class="form-input" id="ftp-password" placeholder="Sua senha FTP">
+                    </div>
+
+                    <div class="form-actions" style="margin-top: 15px;">
+                        <button type="button" class="btn" onclick="testFtpConnection()">🔌 Testar Conexão</button>
+                        <div style="flex:1"></div>
+                        <button type="submit" class="btn btn-primary">Salvar</button>
+                    </div>
+                </form>
+            </div>
+            
+            <div class="form-actions" style="margin-top: 15px; border-top: 1px solid var(--border-color); padding-top: 15px;" id="ftp-modal-footer">
+                <button type="button" class="btn" onclick="closeModal('modal-ftp-connection')">Fechar</button>
+            </div>
         </div>
     </div>
 
