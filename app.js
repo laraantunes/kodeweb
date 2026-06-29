@@ -38,6 +38,9 @@ document.addEventListener('DOMContentLoaded', () => {
     loadFiles();
     loadDbConnections();
     initEventListeners();
+    
+    restorePanelsState();
+    restoreTabsState();
 });
 
 // 1. Initialize Ace Editor
@@ -129,13 +132,26 @@ function initAceEditor() {
     });
 
     // Handle Content Changes (Dirty state)
+    let dirtySaveTimeout;
     state.editor.on('input', () => {
         if (state.activeTabPath && state.openTabs[state.activeTabPath]) {
             const tab = state.openTabs[state.activeTabPath];
-            if (!tab.isDirty && !tab.session.getUndoManager().isClean()) {
-                tab.isDirty = true;
+            const isClean = tab.session.getUndoManager().isClean();
+            
+            if (tab.isDirty !== !isClean) {
+                tab.isDirty = !isClean;
                 updateTabUI(state.activeTabPath);
             }
+            
+            // Save dirty state to localStorage
+            clearTimeout(dirtySaveTimeout);
+            dirtySaveTimeout = setTimeout(() => {
+                if (tab.isDirty) {
+                    localStorage.setItem('kodeweb_dirty_' + tab.path, tab.session.getValue());
+                } else {
+                    localStorage.removeItem('kodeweb_dirty_' + tab.path);
+                }
+            }, 500);
         }
         
         // Update Markdown Preview if active
@@ -227,6 +243,7 @@ function togglePanel(panelId, resizerId, button) {
     button.classList.toggle('active');
     
     if (state.editor) state.editor.resize();
+    savePanelsState();
 }
 
 // 4. Fetch status on initialization
@@ -492,16 +509,31 @@ async function openFile(path, name) {
         const session = ace.createEditSession(data.content, mode);
         session.setUndoManager(new ace.UndoManager());
         
+        let isDirty = false;
+        const dirtyKey = 'kodeweb_dirty_' + path;
+        const dirtyContent = localStorage.getItem(dirtyKey);
+        
+        if (dirtyContent !== null && dirtyContent !== data.content) {
+            session.setValue(dirtyContent); // Makes it dirty in undo stack
+            isDirty = true;
+        } else if (dirtyContent !== null) {
+            localStorage.removeItem(dirtyKey);
+        }
+        
         state.openTabs[path] = {
             path: path,
             name: name,
             session: session,
             isImage: false,
-            isDirty: false
+            isDirty: isDirty
         };
         
         createTabUI(path, name);
         activateTab(path);
+        
+        if (isDirty) {
+            updateTabUI(path);
+        }
     } catch (err) {
         showToast("Erro ao abrir arquivo: " + err.message, "error");
     }
@@ -637,6 +669,7 @@ function activateTab(path) {
             if (typeof toggleMdPreview === 'function') toggleMdPreview(); // Force close preview when switching to non-markdown
         }
     }
+    saveTabsState();
 }
 
 function cycleTabs(direction) {
@@ -678,6 +711,7 @@ function proceedCloseTab(path) {
     if (tabElement) tabElement.remove();
     
     delete state.openTabs[path];
+    localStorage.removeItem('kodeweb_dirty_' + path);
     
     // Switch to another tab if closing active
     if (state.activeTabPath === path) {
@@ -693,6 +727,7 @@ function proceedCloseTab(path) {
             updateBreadcrumb('');
         }
     }
+    saveTabsState();
 }
 
 function updateTabUI(path) {
@@ -724,6 +759,7 @@ async function saveActiveFile() {
             tab.isDirty = false;
             tab.session.getUndoManager().markClean();
             updateTabUI(tab.path);
+            localStorage.removeItem('kodeweb_dirty_' + tab.path);
             showToast("Arquivo salvo com sucesso.", "success");
         } else {
             throw new Error(data.message);
@@ -1465,6 +1501,7 @@ async function renameNode(path, newName) {
                     state.activeTabPath = data.path;
                     updateBreadcrumb(data.path);
                 }
+                saveTabsState();
             }
         } else {
             showToast("Erro ao renomear: " + data.message, "error");
@@ -2637,7 +2674,66 @@ async function saveDbColumnSubmit(e) {
     }
 }
 
-// 14. Markdown Preview Logic
+// 14. Local Storage State Management
+function savePanelsState() {
+    const panels = {
+        left: document.getElementById('panel-left').classList.contains('hidden'),
+        right: document.getElementById('panel-right').classList.contains('hidden'),
+        bottom: document.getElementById('panel-bottom').classList.contains('hidden')
+    };
+    localStorage.setItem('kodeweb_panels', JSON.stringify(panels));
+}
+
+function restorePanelsState() {
+    try {
+        const saved = JSON.parse(localStorage.getItem('kodeweb_panels'));
+        if (saved) {
+            if (saved.left) document.getElementById('toggle-left-btn').click();
+            if (saved.right) document.getElementById('toggle-right-btn').click();
+            if (saved.bottom) document.getElementById('toggle-bottom-btn').click();
+        }
+    } catch(e) {}
+}
+
+function saveTabsState() {
+    if (typeof saveTabsState.timeout !== 'undefined') clearTimeout(saveTabsState.timeout);
+    saveTabsState.timeout = setTimeout(() => {
+        const tabsData = [];
+        Object.keys(state.openTabs).forEach(path => {
+            const t = state.openTabs[path];
+            tabsData.push({
+                path: t.path,
+                name: t.name,
+                isSpecial: t.isSpecial || false,
+                isImage: t.isImage || false
+            });
+        });
+        localStorage.setItem('kodeweb_tabs', JSON.stringify({
+            tabs: tabsData,
+            active: state.activeTabPath
+        }));
+    }, 200);
+}
+
+async function restoreTabsState() {
+    try {
+        const saved = JSON.parse(localStorage.getItem('kodeweb_tabs'));
+        if (saved && saved.tabs && saved.tabs.length > 0) {
+            for (const t of saved.tabs) {
+                if (t.isSpecial && t.path === 'db_explorer') {
+                    openDbExplorer();
+                } else {
+                    await openFile(t.path, t.name);
+                }
+            }
+            if (saved.active && state.openTabs[saved.active]) {
+                activateTab(saved.active);
+            }
+        }
+    } catch(e) {}
+}
+
+// 15. Markdown Preview Logic
 window.mdPreviewActive = false;
 
 window.toggleMdPreview = function() {
