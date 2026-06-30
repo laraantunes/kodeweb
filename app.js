@@ -3,6 +3,8 @@
 // Application State
 const state = {
     workspaceRoot: '',
+    localEnv: false,
+    username: typeof CURRENT_USERNAME !== 'undefined' ? CURRENT_USERNAME : 'user',
     terminals: {
         'term-1': { id: 'term-1', name: 'Terminal 1', cwd: '', history: [], historyIndex: -1, outputHTML: '<div class="terminal-line" style="color: var(--text-muted);">KodeWeb Terminal Emulator - Inicializado.</div>' }
     },
@@ -256,7 +258,6 @@ async function fetchSystemStatus() {
         const data = await response.json();
         if (data.success) {
             state.workspaceRoot = data.workspace_root;
-            updateTerminalPrompt(data.terminal_cwd);
             // Populate database driver options
             populateDbDrivers(data.pdo_drivers);
             
@@ -265,6 +266,14 @@ async function fetchSystemStatus() {
             if (envCheckbox) {
                 envCheckbox.checked = data.local_env;
             }
+            
+            if (data.username) {
+                state.username = data.username;
+                const userField = document.getElementById('options-username');
+                if (userField) userField.value = data.username;
+            }
+            
+            updateTerminalPrompt(data.terminal_cwd);
         }
     } catch (err) {
         console.error("Erro ao obter status do sistema:", err);
@@ -952,7 +961,8 @@ function updateTerminalPrompt(cwd, termId = null) {
     
     if (termId === state.activeTerminalId) {
         const shortCwd = cwd.replace(state.workspaceRoot, 'Workspace');
-        document.getElementById('terminal-prompt-path').textContent = `user@kodeweb:${shortCwd}$`;
+        const username = state.username || 'user';
+        document.getElementById('terminal-prompt-path').textContent = `${username}@kodeweb:${shortCwd}$`;
     }
 }
 
@@ -1000,7 +1010,8 @@ async function executeTerminalCommand(cmd, termId = null) {
     saveTerminalState();
     
     const shortCwd = term.cwd.replace(state.workspaceRoot, 'Workspace');
-    const promptPath = term.type === 'ssh' ? `ssh@kodeweb:${term.cwd}$` : `user@kodeweb:${shortCwd}$`;
+    const username = state.username || 'user';
+    const promptPath = term.type === 'ssh' ? `ssh@kodeweb:${term.cwd}$` : `${username}@kodeweb:${shortCwd}$`;
     writeToTerminalConsole({ prefix: promptPath, cmd: cmd }, 'cmd', termId);
     
     if (cmd === 'clear' || cmd === 'cls') {
@@ -4400,8 +4411,91 @@ async function saveOptionsUser(event) {
     const username = document.getElementById('options-username').value;
     const password = document.getElementById('options-password').value;
     
-    if (!username || !password) {
-        showToast("Preencha ambos os campos.", "warning");
+    if (!username) {
+        showToast("O nome de usuário é obrigatório.", "warning");
+        return;
+    }
+    
+    try {
+        const formData = new FormData();
+        formData.append('action', 'update_user');
+        formData.append('username', username);
+        formData.append('password', password);
+        
+        const response = await fetch('api.php', {
+            method: 'POST',
+            body: formData
+        });
+        
+        const data = await response.json();
+        if (data.success) {
+            showToast("Usuário atualizado com sucesso. Faça login novamente.", "success");
+            closeModal('modal-options');
+            setTimeout(() => window.location.href = 'logout.php', 1500);
+        } else {
+            showToast("Erro: " + (data.message || data.error), "error");
+        }
+    } catch (err) {
+        showToast("Erro ao atualizar usuário.", "error");
+    }
+}
+// --- Options Modal Functions ---
+
+function openOptionsModal() {
+    switchOptionsTab('conn');
+    document.getElementById('modal-options').classList.add('active');
+}
+
+function switchOptionsTab(tab) {
+    const tabs = ['conn', 'env', 'user', 'about'];
+    tabs.forEach(t => {
+        const btn = document.getElementById(`options-tab-${t}-btn`);
+        const view = document.getElementById(`options-${t}-view`);
+        if (btn) btn.classList.toggle('active', t === tab);
+        if (view) {
+            if (t === tab) {
+                view.classList.remove('hidden');
+            } else {
+                view.classList.add('hidden');
+            }
+        }
+    });
+}
+
+async function saveOptionsEnv(event) {
+    event.preventDefault();
+    const isLocal = document.getElementById('options-env-local').checked;
+    
+    try {
+        const formData = new FormData();
+        formData.append('action', 'update_env');
+        formData.append('local_env', isLocal);
+        
+        const response = await fetch('api.php', {
+            method: 'POST',
+            body: formData
+        });
+        
+        const data = await response.json();
+        if (data.success) {
+            state.localEnv = isLocal;
+            showToast("Ambiente atualizado com sucesso. A página será recarregada.", "success");
+            setTimeout(() => window.location.reload(), 1500);
+        } else {
+            showToast("Erro: " + (data.message || data.error), "error");
+        }
+    } catch (err) {
+        showToast("Erro ao atualizar ambiente.", "error");
+    }
+}
+
+async function saveOptionsUser(event) {
+    event.preventDefault();
+    const username = document.getElementById('options-username').value;
+    const password = document.getElementById('options-password').value;
+    
+    if (!username) {
+        showToast("O nome de usuário é obrigatório.", "warning");
         return;
     }
     

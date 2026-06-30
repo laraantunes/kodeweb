@@ -173,6 +173,17 @@ $action = $_GET['action'] ?? $_POST['action'] ?? '';
 try {
     switch ($action) {
         case 'status':
+            $auth_file = __DIR__ . '/data/auth.enc';
+            $username = '';
+            if (file_exists($auth_file)) {
+                $encData = file_get_contents($auth_file);
+                $decData = KodeWebEncryption::decrypt($encData);
+                if ($decData) {
+                    $authData = json_decode($decData, true);
+                    $username = $authData['username'] ?? '';
+                }
+            }
+
             // System info, active path, and available PDO drivers
             echo json_encode([
                 'success' => true,
@@ -182,6 +193,7 @@ try {
                 'os' => PHP_OS,
                 'pdo_drivers' => PDO::getAvailableDrivers(),
                 'local_env' => (isset($GLOBALS['local']) ? $GLOBALS['local'] : false),
+                'username' => $username,
             ]);
             break;
 
@@ -814,13 +826,27 @@ try {
         case 'update_user':
             $username = $_POST['username'] ?? '';
             $password = $_POST['password'] ?? '';
-            if (empty($username) || empty($password)) {
-                throw new Exception("Usuário e senha são obrigatórios.");
+            if (empty($username)) {
+                throw new Exception("Usuário é obrigatório.");
             }
             $auth_file = __DIR__ . '/data/auth.enc';
+            
+            if (empty($password) && file_exists($auth_file)) {
+                $encData = file_get_contents($auth_file);
+                $decData = KodeWebEncryption::decrypt($encData);
+                if ($decData) {
+                    $authData = json_decode($decData, true);
+                    $password_hash = $authData['password'] ?? '';
+                } else {
+                    $password_hash = '';
+                }
+            } else {
+                $password_hash = password_hash($password, PASSWORD_DEFAULT);
+            }
+            
             $jsonString = json_encode([
                 'username' => $username,
-                'password' => password_hash($password, PASSWORD_DEFAULT)
+                'password' => $password_hash
             ]);
             $encrypted = KodeWebEncryption::encrypt($jsonString);
             if (file_put_contents($auth_file, $encrypted) === false) {

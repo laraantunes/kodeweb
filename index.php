@@ -1,6 +1,20 @@
 <?php 
 require_once('auth.php');
 require_once('config.php'); 
+require_once('encryption.php');
+
+$current_username = 'user';
+$auth_file = __DIR__ . '/data/auth.enc';
+if (file_exists($auth_file)) {
+    $encData = file_get_contents($auth_file);
+    $decData = KodeWebEncryption::decrypt($encData);
+    if ($decData) {
+        $authData = json_decode($decData, true);
+        if (!empty($authData['username'])) {
+            $current_username = $authData['username'];
+        }
+    }
+}
 ?>
 <!DOCTYPE html>
 <html lang="pt-br">
@@ -17,7 +31,10 @@ require_once('config.php');
     <script src="https://cdnjs.cloudflare.com/ajax/libs/ace/1.32.7/ace.js" referrerpolicy="no-referrer"></script>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/ace/1.32.7/ext-language_tools.min.js" referrerpolicy="no-referrer"></script>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/marked/11.1.1/marked.min.js" referrerpolicy="no-referrer"></script>
-
+    
+    <script>
+        const CURRENT_USERNAME = <?= json_encode($current_username) ?>;
+    </script>
 </head>
 
 <body>
@@ -335,7 +352,7 @@ require_once('config.php');
                     </div>
                 </div>
                 <div class="terminal-input-row">
-                    <span class="terminal-prompt" id="terminal-prompt-path">user@kodeweb:Workspace$</span>
+                    <span class="terminal-prompt" id="terminal-prompt-path"><?= htmlspecialchars($current_username) ?>@kodeweb:Workspace$</span>
                     <input type="text" class="terminal-input" id="terminal-input"
                         placeholder="Digite seu comando aqui e aperte Enter..." autocomplete="off">
                 </div>
@@ -799,12 +816,12 @@ require_once('config.php');
             <div id="options-user-view" class="hidden">
                 <form id="form-options-user" onsubmit="saveOptionsUser(event)">
                     <div class="form-group">
-                        <label class="form-label" for="options-username">Novo Usuário</label>
+                        <label class="form-label" for="options-username">Usuário</label>
                         <input type="text" class="form-input" id="options-username" required>
                     </div>
                     <div class="form-group">
-                        <label class="form-label" for="options-password">Nova Senha</label>
-                        <input type="password" class="form-input" id="options-password" required>
+                        <label class="form-label" for="options-password">Nova Senha (deixe em branco para não alterar)</label>
+                        <input type="password" class="form-input" id="options-password" placeholder="Nova senha...">
                     </div>
                     <div class="form-actions" style="margin-top: 15px;">
                         <button type="submit" class="btn btn-primary">Salvar Usuário</button>
