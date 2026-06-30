@@ -1123,6 +1123,56 @@ async function loadDbConnections() {
     }
 }
 
+async function loadDbConnectionsModalList() {
+    const listDiv = document.getElementById('db-connections-modal-list');
+    if (!listDiv) return;
+    
+    listDiv.innerHTML = '<li style="color:var(--text-muted); font-size:12px; text-align:center; padding:15px;">Carregando conexões...</li>';
+    try {
+        const response = await fetch('api.php?action=db_connections_list');
+        const data = await response.json();
+        
+        if (data.success) {
+            listDiv.innerHTML = '';
+            if (data.connections.length === 0) {
+                listDiv.innerHTML = '<li style="color:var(--text-muted); font-size:12px; text-align:center; padding:15px;">Nenhuma conexão salva.</li>';
+                return;
+            }
+            
+            data.connections.forEach(conn => {
+                const li = document.createElement('li');
+                li.style.padding = '10px 15px';
+                li.style.borderBottom = '1px solid var(--border-color)';
+                li.style.display = 'flex';
+                li.style.justifyContent = 'space-between';
+                li.style.alignItems = 'center';
+                
+                li.innerHTML = `
+                    <div style="font-size: 14px; font-weight: bold; color: var(--text-primary);">
+                        <span style="color: var(--accent-primary); margin-right: 5px;">🗄️</span> ${conn.name}
+                        <div style="font-size: 11px; color: var(--text-muted); font-weight: normal;">${conn.driver} ${conn.driver !== 'sqlite' ? '- ' + conn.host : ''}</div>
+                    </div>
+                    <div style="display: flex; gap: 5px;">
+                        <button class="btn btn-sm" onclick="connectFromDbModalList('${conn.id}')">Conectar</button>
+                        <button class="btn btn-sm" onclick="editDbConnection(${JSON.stringify(conn).replace(/"/g, '&quot;')}, event)">Editar</button>
+                        <button class="btn btn-sm btn-danger" onclick="deleteDbConnection('${conn.id}', event)">Excluir</button>
+                    </div>
+                `;
+                listDiv.appendChild(li);
+            });
+        }
+    } catch (err) {
+        console.error("Erro modal db connections:", err);
+        listDiv.innerHTML = '<li style="color:var(--text-muted); font-size:12px; text-align:center; padding:15px;">Erro ao carregar.</li>';
+    }
+}
+
+window.connectFromDbModalList = function(id) {
+    selectDbConnection(id);
+    openDbExplorer();
+    closeModal('modal-db-connections-list');
+};
+
 function selectDbConnection(id, e) {
     if (e) e.stopPropagation();
     state.activeConnectionId = id;
@@ -1217,6 +1267,7 @@ window.deleteDbConnection = function(id, e) {
                     activeLabel.style.color = 'var(--text-muted)';
                 }
                 loadDbConnections();
+                loadDbConnectionsModalList();
                 showToast("Conexão removida com sucesso!", "success");
             } else {
                 showToast("Erro ao excluir: " + data.message, "error");
@@ -1260,6 +1311,7 @@ async function saveDbConnection(e) {
         if (data.success) {
             closeModal('modal-connection');
             loadDbConnections();
+            loadDbConnectionsModalList();
             showToast("Conexão salva com sucesso!", "success");
         } else {
             showToast("Erro ao salvar conexão: " + data.message, "error");
@@ -1472,6 +1524,10 @@ function initEventListeners() {
             loadDbExplorerTree(connId);
         }
     });
+    document.getElementById('db-explorer-custom-query-btn').addEventListener('click', () => {
+        openCustomDbQueryView();
+    });
+    document.getElementById('db-run-custom-query-btn').addEventListener('click', executeCustomDbQuery);
     
     // Tab switching in Explorer
     document.getElementById('db-tab-data-btn').addEventListener('click', () => switchDbTab('data'));
@@ -2028,6 +2084,7 @@ async function loadDbExplorerTree(connId) {
     if (!connId) {
         root.innerHTML = '<li style="color: var(--text-muted); font-size:12px; text-align:center; padding-top:20px;">Selecione uma conexão para listar os bancos.</li>';
         document.getElementById('db-table-view-container').classList.add('hidden');
+        document.getElementById('db-custom-query-container').classList.add('hidden');
         document.getElementById('db-explorer-empty-placeholder').classList.remove('hidden');
         return;
     }
@@ -2191,6 +2248,7 @@ function loadTableDetails(dbName, tableName) {
     switchDbTab('data');
     
     document.getElementById('db-explorer-empty-placeholder').classList.add('hidden');
+    document.getElementById('db-custom-query-container').classList.add('hidden');
     document.getElementById('db-table-view-container').classList.remove('hidden');
     
     fetchTableData();
@@ -2289,6 +2347,120 @@ async function fetchTableData() {
         gridContainer.innerHTML = `<div style="padding:20px; color:var(--accent-error); font-size:12px;">Falha de comunicação: ${escapeHTML(err.message)}</div>`;
         document.getElementById('db-pagination-info').textContent = `Falha de rede.`;
     }
+}
+
+function openCustomDbQueryView() {
+    document.getElementById('db-explorer-empty-placeholder').classList.add('hidden');
+    document.getElementById('db-table-view-container').classList.add('hidden');
+    document.getElementById('db-custom-query-container').classList.remove('hidden');
+    
+    // Initialize Ace Editor if not yet
+    if (!state.dbExplorer.customQueryEditor) {
+        state.dbExplorer.customQueryEditor = ace.edit("db-custom-query-editor");
+        state.dbExplorer.customQueryEditor.setTheme("ace/theme/tomorrow_night_eighties");
+        state.dbExplorer.customQueryEditor.session.setMode("ace/mode/sql");
+        state.dbExplorer.customQueryEditor.setOptions({
+            fontSize: "14px",
+            showPrintMargin: false,
+            enableBasicAutocompletion: true,
+            enableLiveAutocompletion: true
+        });
+        
+        state.dbExplorer.customQueryEditor.commands.addCommand({
+            name: 'runCustomQuery',
+            bindKey: {win: 'Ctrl-Enter',  mac: 'Command-Enter'},
+            exec: function() {
+                executeCustomDbQuery();
+            }
+        });
+    }
+}
+
+async function executeCustomDbQuery() {
+    const editor = state.dbExplorer.customQueryEditor;
+    if (!editor) return;
+    
+    const sql = editor.getValue().trim();
+    if (!sql) {
+        showToast("Digite uma consulta SQL.", "warning");
+        return;
+    }
+    
+    const connId = document.getElementById('db-explorer-connection-select').value;
+    if (!connId) {
+        showToast("Selecione uma conexão no Navegador DB.", "warning");
+        return;
+    }
+    
+    const resultsContainer = document.getElementById('db-custom-query-results');
+    resultsContainer.innerHTML = '<div style="padding: 20px; text-align: center; color: var(--text-muted);">Executando consulta...</div>';
+    
+    const formData = new FormData();
+    formData.append('action', 'db_query_execute');
+    formData.append('connection_id', connId);
+    formData.append('database', state.dbExplorer.currentDatabase || '');
+    formData.append('sql', sql);
+    
+    try {
+        const response = await fetch('api.php', { method: 'POST', body: formData });
+        const data = await response.json();
+        
+        if (data.success) {
+            if (data.is_select) {
+                renderCustomQueryGrid(data.columns, data.rows);
+            } else {
+                resultsContainer.innerHTML = `<div style="padding: 20px; text-align: center; color: var(--accent-success);">${data.affected_rows} linha(s) afetada(s).</div>`;
+            }
+        } else {
+            resultsContainer.innerHTML = `<div style="padding: 20px; text-align: center; color: var(--accent-danger);">Erro: ${data.message}</div>`;
+        }
+    } catch (err) {
+        resultsContainer.innerHTML = `<div style="padding: 20px; text-align: center; color: var(--accent-danger);">Erro na requisição: ${err.message}</div>`;
+    }
+}
+
+function renderCustomQueryGrid(columns, rows) {
+    const gridContainer = document.getElementById('db-custom-query-results');
+    gridContainer.innerHTML = '';
+    
+    if (rows.length === 0) {
+        gridContainer.innerHTML = '<div style="padding:20px; color:var(--text-muted); text-align:center;">Nenhum registro retornado.</div>';
+        return;
+    }
+    
+    const table = document.createElement('table');
+    table.className = 'db-grid-table';
+    
+    // Header
+    const thead = document.createElement('thead');
+    const trHead = document.createElement('tr');
+    columns.forEach(col => {
+        const th = document.createElement('th');
+        th.textContent = col;
+        trHead.appendChild(th);
+    });
+    thead.appendChild(trHead);
+    table.appendChild(thead);
+    
+    // Body
+    const tbody = document.createElement('tbody');
+    rows.forEach(row => {
+        const tr = document.createElement('tr');
+        columns.forEach(col => {
+            const td = document.createElement('td');
+            let val = row[col];
+            if (val === null) {
+                td.innerHTML = '<span class="db-null">NULL</span>';
+            } else {
+                td.textContent = val;
+            }
+            tr.appendChild(td);
+        });
+        tbody.appendChild(tr);
+    });
+    table.appendChild(tbody);
+    
+    gridContainer.appendChild(table);
 }
 
 function renderDataGrid(columns, rows) {
@@ -4606,9 +4778,9 @@ async function loadGitStatus(repoPath) {
                     btnRev.title = 'Revert changes';
                     btnRev.style.marginLeft = '5px';
                     btnRev.onclick = () => {
-                        if(confirm('Tem certeza que deseja reverter ' + f.file + '?')) {
+                        showConfirm('Tem certeza que deseja reverter ' + f.file + '?', () => {
                             executeGitAction(repoPath, 'revert', f.file);
-                        }
+                        });
                     };
                     
                     const btnDiff = document.createElement('button');

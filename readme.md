@@ -1,71 +1,67 @@
-# KodeWeb IDE 💻
+# KodeWeb IDE 🚀
 
-**KodeWeb** é uma IDE leve e moderna baseada em PHP e JavaScript, projetada para ser hospedada diretamente em um servidor web. Ela permite gerenciar, criar e editar os arquivos do servidor em tempo real, além de incluir um emulador de terminal interativo e um cliente de banco de dados com credenciais criptografadas.
+**KodeWeb** é uma IDE leve e moderna baseada em PHP e JavaScript, projetada para ser hospedada diretamente em um servidor web. Ela permite gerenciar, criar e editar arquivos, gerenciar conexões com Banco de Dados, Git, FTP e SSH, tudo de forma integrada e segura.
 
 ![Kodeweb IDE](kodeweb-view.png)
 
 ---
 
-## 🚀 Funcionalidades Principais
+## ✨ Funcionalidades Principais
 
-*   **Editor de Código Ace**: Integrado via CDN com tema Darcula, autocomplete inteligente e suporte a realce de sintaxe para PHP, JS, CSS, HTML, JSON, SQL, MD, XML, YAML, Apache Configs, entre outros.
-*   **Gerenciador de Arquivos sob Demanda**: Árvore de arquivos dinâmica carregada sob demanda para máxima performance. Suporta operações de criação (arquivo/pasta), renomeação, exclusão e edição.
-*   **Workspace Abas Multitarefa**: Alterne de forma transparente entre vários arquivos abertos, com suporte a atalhos de salvamento (`Ctrl + S` / `Cmd + S`) e detecção de arquivos com alterações pendentes (dirty states).
-*   **Terminal de Comandos Emulado**: Execute comandos shell diretamente no servidor. O sistema rastreia e persiste automaticamente o diretório de trabalho atual (`CWD`) por meio de sessões de comandos, permitindo que você navegue pelo servidor com o comando `cd` padrão. Também inclui histórico de comandos (setas Para Cima/Para Baixo).
-*   **Painel de Banco de Dados Criptografado**:
-    *   Cadastre e salve conexões com bancos **MySQL**, **PostgreSQL** e **SQLite**.
-    *   As credenciais de conexões são armazenadas no servidor de forma criptografada usando algoritmo simétrico **AES-256-CBC**.
-    *   Permite executar consultas SQL e visualizar os resultados em uma tabela interativa responsiva diretamente no painel lateral.
-*   **Layout Adaptável e Redimensionável**: Esconda ou exiba os painéis (Arquivos, Banco de Dados, Terminal) com botões rápidos na barra de topo e controle o tamanho dos painéis arrastando as bordas.
+*   **Editor de Código Ace**: Integrado via CDN com tema Darcula, autocomplete inteligente e suporte a realce de sintaxe para dezenas de linguagens e atalhos globais de salvamento.
+*   **Gerenciador de Arquivos**: Árvore de arquivos carregada sob demanda. Suporta criação, renomeação, deleção e drag-and-drop de arquivos locais para upload no servidor.
+*   **Git Integrado**: Painel visual de versionamento! Veja arquivos modificados (Staged/Unstaged), visualize o Diff completo em uma aba dedicada, faça commits, push, pull, e navegue por uma árvore visual do `git log`.
+*   **Terminal Multitarefa (Local e SSH)**: Um terminal emulado que rastreia diretórios locais de forma inteligente. E mais: você pode salvar credenciais SSH (usando senhas criptografadas no servidor) e abrir abas de terminal conectadas diretamente em seus servidores remotos!
+*   **Explorador de Banco de Dados (DB Explorer)**:
+    *   Suporte a **MySQL**, **PostgreSQL** e **SQLite**.
+    *   Navegue por bancos e tabelas visualmente no painel central da IDE.
+    *   Editor global de **Consultas SQL Customizadas** com Syntax Highlighting e atalho `Ctrl+Enter` para rodar instruções livres.
+    *   Interface elegante para listar, editar e gerenciar as conexões.
+*   **Cliente FTP Embutido**: Salve conexões FTP e navegue/edite arquivos de servidores remotos diretamente no KodeWeb como se fossem locais.
+*   **Busca Global Avançada**: Encontre qualquer termo ou expressão dentro do seu projeto inteiro através do atalho rápido de busca em arquivos.
+*   **Criptografia AES-256-CBC**: Todas as senhas (bancos, FTP, SSH, Login) são salvas em sua máquina host de forma blindada, protegidas via chaves dinâmicas na pasta de conexões.
 
 ---
 
 ## 🛠️ Requisitos do Sistema
 
-1.  **Servidor Web**: Apache (recomendado, com `mod_rewrite` e suporte a arquivos `.htaccess`) ou Nginx.
+1.  **Servidor Web**: Apache (recomendado, com `mod_rewrite` e arquivos `.htaccess`) ou Nginx.
 2.  **PHP**: Versão 7.4 ou superior (Totalmente compatível com PHP 8.x).
 3.  **Extensões do PHP**:
     *   `openssl` (necessária para criptografia das credenciais).
-    *   `pdo` e drivers específicos (ex: `pdo_mysql`, `pdo_pgsql`, `pdo_sqlite`) para conexões com bancos de dados.
-    *   Habilitação da função `shell_exec` (para funcionamento do terminal).
+    *   `pdo` e drivers (ex: `pdo_mysql`, `pdo_pgsql`, `pdo_sqlite`) para banco de dados.
+    *   `ftp` (para o explorador FTP remoto).
+    *   Habilitação das funções shell (`shell_exec`, `exec`, `proc_open`) para funcionamento do Git e Terminal local.
+    *   (O terminal SSH utiliza internamente a biblioteca `phpseclib3`, não exigindo extensões nativas extras).
 
 ---
 
-## 📦 Instalação e Configuração
+## 🔒 Instalação e Configuração
 
 ### 1. Clonar ou Fazer Upload
 Mova a pasta `kodeweb` inteira para a raiz do seu servidor web (por exemplo, `/var/www/html/kodeweb` ou `/srv/http/kodeweb`).
 
 ### 2. Instalação e Criação de Usuário
-A IDE possui um sistema de instalação e login integrado para proteger o acesso.
-
-Para realizar a configuração inicial:
+O acesso ao KodeWeb é bloqueado por autenticação.
 1. Acesse a pasta da IDE no seu navegador (ex: `http://localhost/kodeweb`).
-2. Você será redirecionado automaticamente para a página de **Instalação**.
-3. Defina seu **Usuário** e **Senha**. Esta etapa cria um arquivo criptografado (`data/auth.enc`) para armazenar suas credenciais com segurança.
-4. Defina se o ambiente é local (gerando um arquivo `.env` para configurações internas).
-5. Após instalar, faça o login para acessar a interface da IDE. Caso deseje alterar a senha no futuro, basta acessar manualmente a página `install.php` para recriar suas credenciais.
+2. Você será redirecionado para a página de **Instalação**.
+3. Defina seu **Usuário** e **Senha** mestre.
+4. O sistema vai gerar automaticamente a sua chave de criptografia interna (`.key`) e os arquivos base para proteger suas futuras conexões.
 
-### 3. Permissões de Pastas e Arquivos
-Para que a IDE possa ler e salvar alterações, o usuário do servidor web (ex: `www-data` ou `http`) deve possuir permissão de escrita nas seguintes pastas:
-*   `kodeweb/` (necessário para criar a chave de segurança `.key` no primeiro acesso, o arquivo `.env` e a pasta `data/`).
-*   `kodeweb/data/` (onde as credenciais criptografadas de login ficam armazenadas).
-*   `kodeweb/connections/` (onde são armazenados os arquivos de conexão criptografados).
-*   O diretório pai/workspace que deseja editar no servidor.
-
-No Linux, você pode ajustar as permissões rapidamente rodando:
+### 3. Permissões
+O usuário do servidor web (`www-data` ou `http`) deve possuir permissão de escrita e leitura na pasta raiz do KodeWeb e do projeto, para conseguir gerenciar e salvar arquivos:
 ```bash
 chown -R www-data:www-data /caminho/para/kodeweb
 chmod -R 755 /caminho/para/kodeweb
 ```
-As conexões de banco de dados criadas são protegidas por um `.htaccess` dedicado dentro da pasta `connections/` contendo `Require all denied`, bloqueando qualquer leitura direta via navegador.
 
 ---
 
-## 🎹 Atalhos Úteis
+## ⌨️ Atalhos Úteis
 
 *   **Salvar arquivo**: `Ctrl + S` (Windows/Linux) ou `Cmd + S` (macOS).
-*   **Fechar aba/arquivo**: `Alt + W` (Windows/Linux) ou `Option + W` (macOS). *(Também aceita `Ctrl + W` / `Cmd + W` quando executado em modo PWA).*
-*   **Alternar pastas na árvore**: Duplo clique abre arquivos, clique simples em uma pasta expande/recolhe.
-*   **Navegar no histórico do terminal**: Seta `Para Cima` (Up Arrow) e `Para Baixo` (Down Arrow) no input de comandos.
-*   **Limpar terminal**: Digite `clear` ou `cls` e aperte Enter.
+*   **Fechar aba**: `Alt + W` / `Option + W`.
+*   **Busca Global em Arquivos**: `Ctrl + Shift + F` / `Cmd + Shift + F`.
+*   **Rodar SQL**: `Ctrl + Enter` (dentro da tela de Consulta Customizada do DB Explorer).
+*   **Alternar painel lateral**: `Ctrl + B` ou arraste a barra de expansão.
+*   **Alternar Markdown Preview**: Abra um arquivo `.md` e clique no botão de preview na janela de edição.

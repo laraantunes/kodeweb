@@ -219,7 +219,10 @@ if (file_exists($auth_file)) {
                         <aside class="db-explorer-sidebar">
                             <div class="db-explorer-sidebar-header">
                                 <span>Navegador DB</span>
-                                <button class="action-icon-btn" id="db-explorer-refresh-btn" data-tooltip="Recarregar Estrutura">🔄</button>
+                                <div style="display: flex; gap: 8px;">
+                                    <button class="action-icon-btn" id="db-explorer-custom-query-btn" data-tooltip="Nova Consulta SQL">📝</button>
+                                    <button class="action-icon-btn" id="db-explorer-refresh-btn" data-tooltip="Recarregar Estrutura">🔄</button>
+                                </div>
                             </div>
                             <div class="db-explorer-connection-select-container">
                                 <label for="db-explorer-connection-select" style="font-size:10px; color:var(--text-muted); display:block; margin-bottom:4px;">Conexão:</label>
@@ -241,6 +244,22 @@ if (file_exists($auth_file)) {
                             <div id="db-explorer-empty-placeholder" class="db-explorer-placeholder">
                                 <h3>Gerenciador de Banco de Dados</h3>
                                 <p style="color: var(--text-muted); font-size:13px; margin-top:8px;">Selecione uma tabela na árvore lateral para visualizar e editar seus dados e estrutura.</p>
+                            </div>
+                            
+                            <div id="db-custom-query-container" class="hidden" style="display: flex; flex-direction: column; height: 100%;">
+                                <div class="db-table-header">
+                                    <div class="db-table-title-section">
+                                        <span class="db-table-badge" style="background-color: var(--accent-primary);">SQL</span>
+                                        <h2>Consulta SQL Personalizada</h2>
+                                    </div>
+                                    <button class="btn btn-primary btn-sm" id="db-run-custom-query-btn">▶️ Executar Consulta</button>
+                                </div>
+                                <div style="padding: 15px; display: flex; flex-direction: column; gap: 15px; flex: 1; overflow: hidden;">
+                                    <div id="db-custom-query-editor" style="height: 250px; border: 1px solid var(--border-color); border-radius: 4px;"></div>
+                                    <div id="db-custom-query-results" style="flex: 1; overflow: auto; border: 1px solid var(--border-color); border-radius: 4px; background: var(--bg-secondary);">
+                                        <div style="padding: 20px; text-align: center; color: var(--text-muted); font-size: 13px;">Os resultados da sua consulta aparecerão aqui.</div>
+                                    </div>
+                                </div>
                             </div>
                             
                             <div id="db-table-view-container" class="hidden">
@@ -472,6 +491,24 @@ if (file_exists($auth_file)) {
 
             </div>
         </aside>
+    </div>
+
+    <!-- Modal for Database Connections List -->
+    <div class="modal-overlay" id="modal-db-connections-list">
+        <div class="modal-content" style="width: 450px;">
+            <h3 class="modal-header">Gerenciador DB</h3>
+            
+            <div id="db-modal-list-view">
+                <ul id="db-connections-modal-list" style="list-style:none; padding:0; margin:0; max-height: 300px; overflow-y: auto; background: var(--bg-secondary); border: 1px solid var(--border-color); border-radius: 6px;">
+                    <li style="color:var(--text-muted); font-size:12px; text-align:center; padding:15px;">Carregando conexões...</li>
+                </ul>
+            </div>
+            
+            <div class="form-actions" style="margin-top: 15px; border-top: 1px solid var(--border-color); padding-top: 15px;" id="db-modal-footer">
+                <button type="button" class="btn" onclick="closeModal('modal-db-connections-list')">Fechar</button>
+                <button type="button" class="btn btn-primary" onclick="closeModal('modal-db-connections-list'); document.getElementById('form-db-connection').reset(); document.getElementById('db-conn-id').value = ''; document.getElementById('modal-conn-title').textContent = 'Nova Conexão de Banco'; openModal('modal-connection');">Nova Conexão</button>
+            </div>
+        </div>
     </div>
 
     <!-- Modal for Database Connections -->
@@ -857,7 +894,7 @@ if (file_exists($auth_file)) {
             
             <div id="options-conn-view">
                 <div style="display: flex; flex-direction: column; gap: 10px;">
-                    <button class="btn btn-primary" onclick="closeModal('modal-options'); document.getElementById('modal-connection').classList.add('active');">Conexões DB</button>
+                    <button class="btn btn-primary" onclick="closeModal('modal-options'); document.getElementById('modal-db-connections-list').classList.add('active'); loadDbConnectionsModalList();">Conexões DB</button>
                     <button class="btn btn-primary" onclick="closeModal('modal-options'); document.getElementById('modal-ftp-connection').classList.add('active'); switchFtpModalTab('list');">Conexões FTP</button>
                     <button class="btn btn-primary" onclick="closeModal('modal-options'); document.getElementById('modal-ssh-connection').classList.add('active'); switchSshModalTab('list');">Conexões SSH</button>
                 </div>
