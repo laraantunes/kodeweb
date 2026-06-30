@@ -252,7 +252,10 @@ if (file_exists($auth_file)) {
                                         <span class="db-table-badge" style="background-color: var(--accent-primary);">SQL</span>
                                         <h2>Consulta SQL Personalizada</h2>
                                     </div>
-                                    <button class="btn btn-primary btn-sm" id="db-run-custom-query-btn">▶️ Executar Consulta</button>
+                                    <div style="display: flex; gap: 8px;">
+                                        <button class="btn btn-sm" id="db-cancel-custom-query-btn" style="display: none;">🛑 Cancelar</button>
+                                        <button class="btn btn-primary btn-sm" id="db-run-custom-query-btn">▶️ Executar Consulta</button>
+                                    </div>
                                 </div>
                                 <div style="padding: 15px; display: flex; flex-direction: column; gap: 15px; flex: 1; overflow: hidden;">
                                     <div id="db-custom-query-editor" style="height: 250px; border: 1px solid var(--border-color); border-radius: 4px;"></div>
@@ -370,7 +373,8 @@ if (file_exists($auth_file)) {
                             <select id="git-repo-select" class="form-input" style="width: 100%; max-width: 400px;">
                                 <option value="">Carregando projetos...</option>
                             </select>
-                            <span id="git-current-branch" style="margin-left: 10px; padding: 3px 8px; background: var(--bg-hover); border-radius: 4px; font-size: 12px; color: var(--accent-primary);"></span>
+                            <span id="git-current-branch" style="display: none; margin-left: 10px; padding: 3px 8px; background: var(--bg-hover); border-radius: 4px; font-size: 12px; color: var(--accent-primary);"></span>
+                            <span id="git-sync-status" style="display: none; margin-left: 5px; font-size: 12px; color: var(--text-muted);"></span>
                         </div>
 
                         <div style="display: flex; gap: 20px; height: calc(100% - 150px); min-height: 400px;">

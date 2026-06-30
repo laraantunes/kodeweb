@@ -1528,6 +1528,7 @@ function initEventListeners() {
         openCustomDbQueryView();
     });
     document.getElementById('db-run-custom-query-btn').addEventListener('click', executeCustomDbQuery);
+    document.getElementById('db-cancel-custom-query-btn').addEventListener('click', cancelCustomDbQuery);
     
     // Tab switching in Explorer
     document.getElementById('db-tab-data-btn').addEventListener('click', () => switchDbTab('data'));
@@ -2377,6 +2378,10 @@ function openCustomDbQueryView() {
 }
 
 async function executeCustomDbQuery() {
+    if (state.dbExplorer.customQueryAbortController) {
+        state.dbExplorer.customQueryAbortController.abort();
+    }
+    
     const editor = state.dbExplorer.customQueryEditor;
     if (!editor) return;
     
@@ -2401,8 +2406,18 @@ async function executeCustomDbQuery() {
     formData.append('database', state.dbExplorer.currentDatabase || '');
     formData.append('sql', sql);
     
+    state.dbExplorer.customQueryAbortController = new AbortController();
+    const btnRun = document.getElementById('db-run-custom-query-btn');
+    const btnCancel = document.getElementById('db-cancel-custom-query-btn');
+    btnRun.style.display = 'none';
+    btnCancel.style.display = 'inline-block';
+    
     try {
-        const response = await fetch('api.php', { method: 'POST', body: formData });
+        const response = await fetch('api.php', { 
+            method: 'POST', 
+            body: formData,
+            signal: state.dbExplorer.customQueryAbortController.signal
+        });
         const data = await response.json();
         
         if (data.success) {
@@ -2415,7 +2430,21 @@ async function executeCustomDbQuery() {
             resultsContainer.innerHTML = `<div style="padding: 20px; text-align: center; color: var(--accent-danger);">Erro: ${data.message}</div>`;
         }
     } catch (err) {
-        resultsContainer.innerHTML = `<div style="padding: 20px; text-align: center; color: var(--accent-danger);">Erro na requisição: ${err.message}</div>`;
+        if (err.name === 'AbortError') {
+            resultsContainer.innerHTML = `<div style="padding: 20px; text-align: center; color: var(--accent-warning);">Consulta abortada localmente (o servidor ainda pode estar processando em segundo plano).</div>`;
+        } else {
+            resultsContainer.innerHTML = `<div style="padding: 20px; text-align: center; color: var(--accent-danger);">Erro na requisição: ${err.message}</div>`;
+        }
+    } finally {
+        state.dbExplorer.customQueryAbortController = null;
+        btnRun.style.display = 'inline-block';
+        btnCancel.style.display = 'none';
+    }
+}
+
+function cancelCustomDbQuery() {
+    if (state.dbExplorer.customQueryAbortController) {
+        state.dbExplorer.customQueryAbortController.abort();
     }
 }
 
@@ -4672,6 +4701,12 @@ document.addEventListener('DOMContentLoaded', () => {
         repoSelect.addEventListener('change', () => {
             if (repoSelect.value) {
                 loadGitStatus(repoSelect.value);
+            } else {
+                document.getElementById('git-current-branch').style.display = 'none';
+                document.getElementById('git-sync-status').style.display = 'none';
+                document.getElementById('git-log-output').textContent = '';
+                document.getElementById('git-staged-files').innerHTML = '';
+                document.getElementById('git-unstaged-files').innerHTML = '';
             }
         });
     }
@@ -4729,11 +4764,13 @@ async function loadGitRepositories() {
 
 async function loadGitStatus(repoPath) {
     const branchEl = document.getElementById('git-current-branch');
+    const syncStatusEl = document.getElementById('git-sync-status');
     const logEl = document.getElementById('git-log-output');
     const stagedEl = document.getElementById('git-staged-files');
     const unstagedEl = document.getElementById('git-unstaged-files');
     
     branchEl.textContent = 'Carregando...';
+    syncStatusEl.textContent = '';
     stagedEl.innerHTML = '';
     unstagedEl.innerHTML = '';
     
@@ -4746,7 +4783,15 @@ async function loadGitStatus(repoPath) {
         const data = await res.json();
         
         if (data.success) {
+            branchEl.style.display = 'inline-block';
+            syncStatusEl.style.display = 'inline-block';
             branchEl.textContent = data.branch;
+            
+            let syncText = [];
+            if (data.ahead > 0) syncText.push(`⬆️ ${data.ahead} (Ahead)`);
+            if (data.behind > 0) syncText.push(`⬇️ ${data.behind} (Behind)`);
+            syncStatusEl.textContent = syncText.length > 0 ? `[${syncText.join(' ')}]` : '✔️ Sincronizado';
+            
             logEl.textContent = data.tree.join('\n');
             
             // Render Unstaged

@@ -1856,6 +1856,15 @@ try {
             // Branch
             $branch = trim(shell_exec("cd " . escapeshellarg($repo) . " && git branch --show-current 2>&1"));
             
+            // Ahead/Behind count
+            $ahead = 0;
+            $behind = 0;
+            $rev_count = trim(shell_exec("cd " . escapeshellarg($repo) . " && git rev-list --left-right --count HEAD...@{u} 2>/dev/null"));
+            if ($rev_count && preg_match('/^(\d+)\s+(\d+)$/', $rev_count, $matches)) {
+                $ahead = (int)$matches[1];
+                $behind = (int)$matches[2];
+            }
+            
             // Status (staged vs unstaged)
             $status_raw = shell_exec("cd " . escapeshellarg($repo) . " && git status --porcelain 2>&1");
             $staged = [];
@@ -1897,6 +1906,8 @@ try {
             echo json_encode([
                 'success' => true,
                 'branch' => $branch,
+                'ahead' => $ahead,
+                'behind' => $behind,
                 'staged' => $staged,
                 'unstaged' => $unstaged,
                 'tree' => $tree
