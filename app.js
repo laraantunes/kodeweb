@@ -679,14 +679,20 @@ function activateTab(path) {
     const tabInfo = state.openTabs[path];
     
     // Update breadcrumb
-    updateBreadcrumb(path === 'db_explorer' ? 'Explorador de Banco de Dados' : path);
-    
+    if (path === 'db_explorer') {
+        updateBreadcrumb('Explorador de Banco de Dados');
+    } else if (path === 'git_explorer') {
+        updateBreadcrumb('Git Integrado');
+    } else {
+        updateBreadcrumb(path);
+    }
     if (path === 'db_explorer') {
         // Hide editor, image preview and placeholder
         document.getElementById('no-file-placeholder').classList.add('hidden');
         document.getElementById('editor').classList.add('hidden');
         if(document.getElementById('image-preview-container')) document.getElementById('image-preview-container').classList.add('hidden');
         if(document.getElementById('ftp-explorer-container')) document.getElementById('ftp-explorer-container').classList.add('hidden');
+        if(document.getElementById('git-explorer-container')) document.getElementById('git-explorer-container').classList.add('hidden');
         
         // Show db explorer
         document.getElementById('db-explorer-container').classList.remove('hidden');
@@ -700,13 +706,30 @@ function activateTab(path) {
         if(document.getElementById('image-preview-container')) document.getElementById('image-preview-container').classList.add('hidden');
         if(document.getElementById('pdf-preview-container')) document.getElementById('pdf-preview-container').classList.add('hidden');
         document.getElementById('db-explorer-container').classList.add('hidden');
+        if(document.getElementById('git-explorer-container')) document.getElementById('git-explorer-container').classList.add('hidden');
         
         // Show ftp explorer
         document.getElementById('ftp-explorer-container').classList.remove('hidden');
+    } else if (path === 'git_explorer') {
+        // Hide others, show git
+        document.getElementById('no-file-placeholder').classList.add('hidden');
+        document.getElementById('editor').classList.add('hidden');
+        if(document.getElementById('image-preview-container')) document.getElementById('image-preview-container').classList.add('hidden');
+        if(document.getElementById('pdf-preview-container')) document.getElementById('pdf-preview-container').classList.add('hidden');
+        document.getElementById('db-explorer-container').classList.add('hidden');
+        if(document.getElementById('ftp-explorer-container')) document.getElementById('ftp-explorer-container').classList.add('hidden');
+        
+        if(document.getElementById('git-explorer-container')) document.getElementById('git-explorer-container').classList.remove('hidden');
+        
+        // Load repos if not loaded
+        if (document.getElementById('git-repo-select').options.length <= 1) {
+            loadGitRepositories();
+        }
     } else {
         // Hide db explorer and ftp explorer
         document.getElementById('db-explorer-container').classList.add('hidden');
         if(document.getElementById('ftp-explorer-container')) document.getElementById('ftp-explorer-container').classList.add('hidden');
+        if(document.getElementById('git-explorer-container')) document.getElementById('git-explorer-container').classList.add('hidden');
         
         const editorEl = document.getElementById('editor');
         const placeholderEl = document.getElementById('no-file-placeholder');
@@ -828,6 +851,7 @@ function proceedCloseTab(path) {
             if(document.getElementById('pdf-preview-container')) document.getElementById('pdf-preview-container').classList.add('hidden');
             document.getElementById('db-explorer-container').classList.add('hidden');
             if(document.getElementById('ftp-explorer-container')) document.getElementById('ftp-explorer-container').classList.add('hidden');
+            if(document.getElementById('git-explorer-container')) document.getElementById('git-explorer-container').classList.add('hidden');
             updateBreadcrumb('');
         }
     }
@@ -918,7 +942,9 @@ function getAceMode(ext) {
         'yml': 'ace/mode/yaml',
         'yaml': 'ace/mode/yaml',
         'ini': 'ace/mode/ini',
-        'htaccess': 'ace/mode/apache_conf'
+        'htaccess': 'ace/mode/apache_conf',
+        'diff': 'ace/mode/diff',
+        'patch': 'ace/mode/diff'
     };
     return modes[ext.toLowerCase()] || 'ace/mode/text';
 }
@@ -2998,6 +3024,8 @@ async function restoreTabsState() {
             for (const t of saved.tabs) {
                 if (t.isSpecial && t.path === 'db_explorer') {
                     openDbExplorer();
+                } else if (t.isSpecial && t.path === 'git_explorer') {
+                    openGitExplorer();
                 } else if (t.isSpecial && t.path.startsWith('ftp_explorer_')) {
                     const connId = t.path.replace('ftp_explorer_', '');
                     const connName = t.name.replace('🛜 ', '');
@@ -4437,6 +4465,277 @@ async function saveOptionsUser(event) {
         }
     } catch (err) {
         showToast("Erro ao atualizar usuário.", "error");
+    }
+}
+
+// --- Git Explorer Logic ---
+
+function openGitExplorer() {
+    const path = 'git_explorer';
+    const name = '🌿 Git Integrado';
+    
+    if (!state.openTabs[path]) {
+        state.openTabs[path] = {
+            path: path,
+            name: name,
+            isSpecial: true
+        };
+        createTabUI(path, name);
+    }
+    activateTab(path);
+}
+
+// Bind button
+document.addEventListener('DOMContentLoaded', () => {
+    const gitBtn = document.getElementById('git-btn');
+    if (gitBtn) {
+        gitBtn.addEventListener('click', () => {
+            openGitExplorer();
+        });
+    }
+    
+    // Git select change
+    const repoSelect = document.getElementById('git-repo-select');
+    if (repoSelect) {
+        repoSelect.addEventListener('change', () => {
+            if (repoSelect.value) {
+                loadGitStatus(repoSelect.value);
+            }
+        });
+    }
+    
+    // Git buttons
+    if (document.getElementById('git-refresh-btn')) document.getElementById('git-refresh-btn').addEventListener('click', () => {
+        const repo = document.getElementById('git-repo-select').value;
+        if (repo) loadGitStatus(repo);
+    });
+    
+    if (document.getElementById('git-commit-btn')) document.getElementById('git-commit-btn').addEventListener('click', async () => {
+        const repo = document.getElementById('git-repo-select').value;
+        const msg = document.getElementById('git-commit-msg').value;
+        if (!repo) return showToast('Selecione um repositório.', 'warning');
+        if (!msg) return showToast('Digite uma mensagem de commit.', 'warning');
+        
+        await executeGitAction(repo, 'commit', null, msg);
+        document.getElementById('git-commit-msg').value = '';
+    });
+    
+    if (document.getElementById('git-pull-btn')) document.getElementById('git-pull-btn').addEventListener('click', () => {
+        const repo = document.getElementById('git-repo-select').value;
+        if (repo) executeGitAction(repo, 'pull');
+    });
+    
+    if (document.getElementById('git-push-btn')) document.getElementById('git-push-btn').addEventListener('click', () => {
+        const repo = document.getElementById('git-repo-select').value;
+        if (repo) executeGitAction(repo, 'push');
+    });
+});
+
+async function loadGitRepositories() {
+    try {
+        const res = await fetch('api.php?action=git_repos');
+        const data = await res.json();
+        if (data.success) {
+            const select = document.getElementById('git-repo-select');
+            select.innerHTML = '<option value="">Selecione um repositório...</option>';
+            data.repos.forEach(repo => {
+                const opt = document.createElement('option');
+                opt.value = repo.path;
+                opt.textContent = repo.name;
+                select.appendChild(opt);
+            });
+            // Auto select if only one
+            if (data.repos.length === 1) {
+                select.value = data.repos[0].path;
+                loadGitStatus(data.repos[0].path);
+            }
+        }
+    } catch (e) {
+        console.error("Erro ao carregar repositórios git", e);
+    }
+}
+
+async function loadGitStatus(repoPath) {
+    const branchEl = document.getElementById('git-current-branch');
+    const logEl = document.getElementById('git-log-output');
+    const stagedEl = document.getElementById('git-staged-files');
+    const unstagedEl = document.getElementById('git-unstaged-files');
+    
+    branchEl.textContent = 'Carregando...';
+    stagedEl.innerHTML = '';
+    unstagedEl.innerHTML = '';
+    
+    try {
+        const formData = new FormData();
+        formData.append('action', 'git_status');
+        formData.append('repo', repoPath);
+        
+        const res = await fetch('api.php', { method: 'POST', body: formData });
+        const data = await res.json();
+        
+        if (data.success) {
+            branchEl.textContent = data.branch;
+            logEl.textContent = data.tree.join('\n');
+            
+            // Render Unstaged
+            if (data.unstaged.length === 0) {
+                unstagedEl.innerHTML = '<div style="padding: 10px; color: var(--text-muted); font-size: 12px;">Nenhuma alteração</div>';
+            } else {
+                data.unstaged.forEach(f => {
+                    const div = document.createElement('div');
+                    div.style.display = 'flex';
+                    div.style.justifyContent = 'space-between';
+                    div.style.padding = '4px 8px';
+                    div.style.borderBottom = '1px solid var(--border-color)';
+                    div.style.fontSize = '12px';
+                    
+                    const label = document.createElement('span');
+                    let statusColor = f.status === '?' ? 'var(--accent-primary)' : 'var(--accent-warning)';
+                    label.innerHTML = `<span style="color:${statusColor}; font-weight:bold; margin-right:5px;">${f.status}</span> ${f.file}`;
+                    
+                    const actions = document.createElement('div');
+                    const btnAdd = document.createElement('button');
+                    btnAdd.className = 'btn btn-sm btn-primary';
+                    btnAdd.innerHTML = '➕';
+                    btnAdd.title = 'Stage file';
+                    btnAdd.onclick = () => executeGitAction(repoPath, 'stage', f.file);
+                    
+                    const btnRev = document.createElement('button');
+                    btnRev.className = 'btn btn-sm';
+                    btnRev.innerHTML = '↩️';
+                    btnRev.title = 'Revert changes';
+                    btnRev.style.marginLeft = '5px';
+                    btnRev.onclick = () => {
+                        if(confirm('Tem certeza que deseja reverter ' + f.file + '?')) {
+                            executeGitAction(repoPath, 'revert', f.file);
+                        }
+                    };
+                    
+                    const btnDiff = document.createElement('button');
+                    btnDiff.className = 'btn btn-sm';
+                    btnDiff.innerHTML = '👁️';
+                    btnDiff.title = 'View diff';
+                    btnDiff.style.marginLeft = '5px';
+                    btnDiff.onclick = () => openGitDiff(repoPath, f.file);
+                    
+                    actions.appendChild(btnAdd);
+                    actions.appendChild(btnRev);
+                    actions.appendChild(btnDiff);
+                    div.appendChild(label);
+                    div.appendChild(actions);
+                    unstagedEl.appendChild(div);
+                });
+            }
+            
+            // Render Staged
+            if (data.staged.length === 0) {
+                stagedEl.innerHTML = '<div style="padding: 10px; color: var(--text-muted); font-size: 12px;">Nenhum arquivo no stage</div>';
+            } else {
+                data.staged.forEach(f => {
+                    const div = document.createElement('div');
+                    div.style.display = 'flex';
+                    div.style.justifyContent = 'space-between';
+                    div.style.padding = '4px 8px';
+                    div.style.borderBottom = '1px solid var(--border-color)';
+                    div.style.fontSize = '12px';
+                    
+                    const label = document.createElement('span');
+                    label.innerHTML = `<span style="color:var(--accent-success); font-weight:bold; margin-right:5px;">${f.status}</span> ${f.file}`;
+                    
+                    const btnRem = document.createElement('button');
+                    btnRem.className = 'btn btn-sm';
+                    btnRem.innerHTML = '➖';
+                    btnRem.title = 'Unstage file';
+                    btnRem.onclick = () => executeGitAction(repoPath, 'unstage', f.file);
+                    
+                    const btnDiff = document.createElement('button');
+                    btnDiff.className = 'btn btn-sm';
+                    btnDiff.innerHTML = '👁️';
+                    btnDiff.title = 'View diff';
+                    btnDiff.style.marginLeft = '5px';
+                    btnDiff.onclick = () => openGitDiff(repoPath, f.file);
+                    
+                    const actions = document.createElement('div');
+                    actions.appendChild(btnRem);
+                    actions.appendChild(btnDiff);
+                    
+                    div.appendChild(label);
+                    div.appendChild(actions);
+                    stagedEl.appendChild(div);
+                });
+            }
+        }
+    } catch (e) {
+        console.error("Erro status git", e);
+        branchEl.textContent = 'Erro';
+    }
+}
+
+async function openGitDiff(repoPath, file) {
+    try {
+        const formData = new FormData();
+        formData.append('action', 'git_diff');
+        formData.append('repo', repoPath);
+        formData.append('file', file);
+        
+        const res = await fetch('api.php', { method: 'POST', body: formData });
+        const data = await res.json();
+        
+        if (data.success) {
+            let output = data.output;
+            if (!output || output.trim() === '') {
+                output = "(Não há mudanças ou é um arquivo binário/novo sem diff)";
+            }
+            
+            const tabName = `[Diff] ${file}`;
+            const path = `git_diff_${Date.now()}`;
+            
+            const mode = getAceMode('diff');
+            const session = ace.createEditSession(output, mode);
+            session.setUndoManager(new ace.UndoManager());
+            
+            state.openTabs[path] = {
+                path: path,
+                name: tabName,
+                session: session,
+                isImage: false,
+                isPdf: false,
+                isDirty: false,
+                isLocal: true // Evita carregar do servidor
+            };
+            
+            createTabUI(path, tabName);
+            activateTab(path);
+        } else {
+            showToast(data.message || "Erro ao carregar diff", "error");
+        }
+    } catch (e) {
+        showToast("Erro de rede.", "error");
+    }
+}
+
+async function executeGitAction(repoPath, action, file = null, message = null) {
+    try {
+        const formData = new FormData();
+        formData.append('action', 'git_action');
+        formData.append('repo', repoPath);
+        formData.append('git_action', action);
+        if (file) formData.append('file', file);
+        if (message) formData.append('message', message);
+        
+        const res = await fetch('api.php', { method: 'POST', body: formData });
+        const data = await res.json();
+        
+        if (data.success) {
+            if (action === 'commit' || action === 'pull' || action === 'push') {
+                showToast("Comando Git executado com sucesso.", "success");
+            }
+            loadGitStatus(repoPath);
+        } else {
+            showToast(data.message || "Erro no comando git", "error");
+        }
+    } catch (e) {
+        showToast("Erro de rede.", "error");
     }
 }
 // --- Options Modal Functions ---
