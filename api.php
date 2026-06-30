@@ -1859,7 +1859,7 @@ try {
             // Ahead/Behind count
             $ahead = 0;
             $behind = 0;
-            $rev_count = trim(shell_exec("cd " . escapeshellarg($repo) . " && git rev-list --left-right --count HEAD...@{u} 2>/dev/null"));
+            $rev_count = trim(shell_exec("cd " . escapeshellarg($repo) . " && git rev-list --left-right --count \"HEAD...@{u}\" 2>&1"));
             if ($rev_count && preg_match('/^(\d+)\s+(\d+)$/', $rev_count, $matches)) {
                 $ahead = (int)$matches[1];
                 $behind = (int)$matches[2];
