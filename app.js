@@ -987,12 +987,14 @@ async function executeTerminalCommand(cmd, termId = null) {
     cmd = cmd.trim();
     if (!cmd) return;
     
+    if (term.reconnect) return;
+    
     term.history.push(cmd);
     term.historyIndex = term.history.length;
     saveTerminalState();
     
     const shortCwd = term.cwd.replace(state.workspaceRoot, 'Workspace');
-    const promptPath = `user@kodeweb:${shortCwd}$`;
+    const promptPath = term.type === 'ssh' ? `ssh@kodeweb:${term.cwd}$` : `user@kodeweb:${shortCwd}$`;
     writeToTerminalConsole({ prefix: promptPath, cmd: cmd }, 'cmd', termId);
     
     if (cmd === 'clear' || cmd === 'cls') {
@@ -1004,7 +1006,12 @@ async function executeTerminalCommand(cmd, termId = null) {
     }
     
     const formData = new FormData();
-    formData.append('action', 'terminal_cmd');
+    if (term.type === 'ssh') {
+        formData.append('action', 'ssh_terminal_cmd');
+        formData.append('connection_id', term.connId);
+    } else {
+        formData.append('action', 'terminal_cmd');
+    }
     formData.append('cmd', cmd);
     formData.append('terminal_id', termId);
     
@@ -1015,6 +1022,9 @@ async function executeTerminalCommand(cmd, termId = null) {
         if (data.success) {
             if (data.output) writeToTerminalConsole(data.output, 'output', termId);
             updateTerminalPrompt(data.cwd, termId);
+            if (data.autocomplete_list) {
+                state.terminals[termId].autocompleteList = data.autocomplete_list;
+            }
         } else {
             writeToTerminalConsole(data.message || 'Erro desconhecido.', 'error', termId);
         }
@@ -1339,9 +1349,45 @@ function initEventListeners() {
         });
     });
     
-    // Terminal input execution listener
     document.getElementById('terminal-input').addEventListener('keydown', (e) => {
-        if (e.key === 'Enter') {
+        if (e.key === 'Tab') {
+            e.preventDefault();
+            const input = e.target;
+            const val = input.value;
+            const term = state.terminals[state.activeTerminalId];
+            if (!term || !term.autocompleteList) return;
+            
+            // split by space, respecting quotes if possible, but simple split is ok for basic use
+            const parts = val.split(' ');
+            const lastPart = parts.pop();
+            
+            if (lastPart) {
+                // Find all matches
+                const matches = term.autocompleteList.filter(item => item.toLowerCase().startsWith(lastPart.toLowerCase()));
+                
+                if (matches.length === 1) {
+                    parts.push(matches[0]);
+                    input.value = parts.join(' ');
+                } else if (matches.length > 1) {
+                    // Find common prefix
+                    let commonPrefix = matches[0];
+                    for (let i = 1; i < matches.length; i++) {
+                        let j = 0;
+                        while (j < commonPrefix.length && j < matches[i].length && commonPrefix[j].toLowerCase() === matches[i][j].toLowerCase()) {
+                            j++;
+                        }
+                        commonPrefix = commonPrefix.substring(0, j);
+                    }
+                    if (commonPrefix.length > lastPart.length) {
+                        parts.push(commonPrefix);
+                        input.value = parts.join(' ');
+                    } else {
+                        // Print options to console
+                        writeToTerminalConsole(matches.join('  '), 'output');
+                    }
+                }
+            }
+        } else if (e.key === 'Enter') {
             const input = e.target;
             const cmd = input.value;
             input.value = '';
@@ -2899,8 +2945,18 @@ function saveTabsState() {
     if (typeof saveTabsState.timeout !== 'undefined') clearTimeout(saveTabsState.timeout);
     saveTabsState.timeout = setTimeout(() => {
         const tabsData = [];
-        Object.keys(state.openTabs).forEach(path => {
+        // Use DOM order to preserve drag and drop reordering
+        const domTabs = document.querySelectorAll('#tabs-container .tab');
+        let orderedPaths = [];
+        if (domTabs.length > 0) {
+            domTabs.forEach(t => orderedPaths.push(t.dataset.path));
+        } else {
+            orderedPaths = Object.keys(state.openTabs);
+        }
+        
+        orderedPaths.forEach(path => {
             const t = state.openTabs[path];
+            if (!t) return;
             if (t.isLocal && (t.isImage || t.isPdf)) return; // Do not persist local images or pdfs
             tabsData.push({
                 path: t.path,
@@ -3839,15 +3895,23 @@ async function transferFtpToLocal(ftpPathStr, targetDir) {
 
 
 // 9. Multiple Terminals Management
-function createTerminalTab(cwd = '') {
+function createTerminalTab(cwd = '', type = 'local', connId = null, reconnect = false) {
     state.terminalCounter++;
     const termId = 'term-' + state.terminalCounter;
+    
+    let name = 'Terminal ' + state.terminalCounter;
+    if (type === 'ssh') name = '🔒 SSH ' + state.terminalCounter;
+    
     state.terminals[termId] = {
         id: termId,
-        name: 'Terminal ' + state.terminalCounter,
-        cwd: cwd || WORKSPACE_ROOT || '',
+        name: name,
+        cwd: cwd || (type === 'local' ? WORKSPACE_ROOT : '') || '',
         history: [],
         historyIndex: -1,
+        autocompleteList: [],
+        type: type,
+        connId: connId,
+        reconnect: reconnect,
         outputHTML: '<div class="terminal-line" style="color: var(--text-muted);">KodeWeb Terminal Emulator - Inicializado.</div>'
     };
     
@@ -3856,6 +3920,28 @@ function createTerminalTab(cwd = '') {
     // Add to UI
     renderTerminalTabs();
     activateTerminalTab(termId);
+    
+    // Initialize
+    if (type === 'ssh') {
+        if (reconnect) {
+            state.terminals[termId].outputHTML += `<br><div style="color:var(--accent-error)">Sessão SSH Desconectada.</div><button class="btn btn-sm btn-primary" onclick="reconnectSshTerminal('${termId}')" style="margin-top:10px;">Reconectar</button>`;
+            if (state.activeTerminalId === termId) document.getElementById('terminal-console').innerHTML = state.terminals[termId].outputHTML;
+        } else {
+            executeTerminalCommand('', termId);
+        }
+    } else {
+        executeTerminalCommand('', termId);
+    }
+}
+
+window.reconnectSshTerminal = function(termId) {
+    const term = state.terminals[termId];
+    if (term) {
+        term.reconnect = false;
+        term.outputHTML = '<div class="terminal-line" style="color: var(--text-muted);">Reconectando...</div>';
+        if (state.activeTerminalId === termId) document.getElementById('terminal-console').innerHTML = term.outputHTML;
+        executeTerminalCommand('', termId);
+    }
 }
 
 function closeTerminalTab(termId) {
@@ -3902,6 +3988,34 @@ function renderTerminalTabs() {
         const tab = document.createElement('div');
         tab.className = 'tab terminal-tab';
         if (term.id === state.activeTerminalId) tab.classList.add('active');
+        tab.dataset.id = term.id;
+        tab.draggable = true;
+        
+        tab.addEventListener('dragstart', (e) => {
+            e.dataTransfer.setData('text/plain', term.id);
+            tab.classList.add('dragging');
+            setTimeout(() => tab.style.opacity = '0.5', 0);
+        });
+        
+        tab.addEventListener('dragend', () => {
+            tab.classList.remove('dragging');
+            tab.style.opacity = '1';
+            saveTerminalState();
+        });
+        
+        tab.addEventListener('dragover', (e) => {
+            e.preventDefault();
+            const draggingTab = container.querySelector('.dragging');
+            if (draggingTab && draggingTab !== tab) {
+                const rect = tab.getBoundingClientRect();
+                const offset = e.clientX - rect.left - (rect.width / 2);
+                if (offset < 0) {
+                    container.insertBefore(draggingTab, tab);
+                } else {
+                    container.insertBefore(draggingTab, tab.nextSibling);
+                }
+            }
+        });
         
         const title = document.createElement('span');
         title.textContent = term.name;
@@ -3953,7 +4067,38 @@ document.addEventListener('DOMContentLoaded', () => {
     const addTermBtn = document.getElementById('btn-add-terminal');
     if (addTermBtn) {
         addTermBtn.addEventListener('click', () => {
-            createTerminalTab(state.terminals[state.activeTerminalId].cwd);
+            const currentCwd = state.terminals[state.activeTerminalId] && state.terminals[state.activeTerminalId].type === 'local' 
+                ? state.terminals[state.activeTerminalId].cwd 
+                : '';
+            createTerminalTab(currentCwd, 'local');
+        });
+    }
+    
+    const addSshTermBtn = document.getElementById('btn-add-ssh-terminal');
+    if (addSshTermBtn) {
+        addSshTermBtn.addEventListener('click', () => {
+            document.getElementById('modal-ssh-connection').classList.add('active');
+            switchSshModalTab('list');
+        });
+    }
+    
+    const container = document.getElementById('terminal-tabs-container');
+    if (container) {
+        container.addEventListener('dblclick', (e) => {
+            if (e.target === container) {
+                const currentCwd = state.terminals[state.activeTerminalId] && state.terminals[state.activeTerminalId].type === 'local' 
+                    ? state.terminals[state.activeTerminalId].cwd 
+                    : '';
+                createTerminalTab(currentCwd, 'local');
+            }
+        });
+    }
+    
+    const formSsh = document.getElementById("form-ssh-connection");
+    if (formSsh) {
+        formSsh.addEventListener("submit", (e) => {
+            e.preventDefault();
+            saveSshConnection();
         });
     }
     
@@ -3972,15 +4117,28 @@ function saveTerminalState() {
         terminalCounter: state.terminalCounter
     };
     
-    for (const [id, term] of Object.entries(state.terminals)) {
+    const domTabs = document.querySelectorAll('#terminal-tabs-container .terminal-tab');
+    let orderedIds = [];
+    if (domTabs.length > 0) {
+        domTabs.forEach(t => orderedIds.push(t.dataset.id));
+    } else {
+        orderedIds = Object.keys(state.terminals);
+    }
+    
+    orderedIds.forEach(id => {
+        if (!state.terminals[id]) return;
+        const term = state.terminals[id];
         termState.terminals[id] = {
             id: term.id,
             name: term.name,
             cwd: term.cwd,
             history: term.history,
-            historyIndex: term.historyIndex
+            historyIndex: term.historyIndex,
+            type: term.type || 'local',
+            connId: term.connId || null,
+            reconnect: term.type === 'ssh' ? true : false
         };
-    }
+    });
     
     localStorage.setItem('kodeweb_terminals', JSON.stringify(termState));
 }
@@ -3995,7 +4153,11 @@ function restoreTerminalState() {
                 for (const [id, term] of Object.entries(data.terminals)) {
                     state.terminals[id] = {
                         ...term,
-                        outputHTML: '<div class="terminal-line" style="color: var(--text-muted);">KodeWeb Terminal Emulator - Restaurado.</div>'
+                        reconnect: term.type === 'ssh' ? true : false,
+                        autocompleteList: [],
+                        outputHTML: term.type === 'ssh' 
+                            ? '<div class="terminal-line" style="color: var(--text-muted);">Sessão SSH Restaurada.</div><br><div style="color:var(--accent-error)">Sessão Desconectada.</div><button class="btn btn-sm btn-primary" onclick="reconnectSshTerminal(\'' + id + '\')" style="margin-top:10px;">Reconectar</button>'
+                            : '<div class="terminal-line" style="color: var(--text-muted);">KodeWeb Terminal Emulator - Restaurado.</div>'
                     };
                 }
                 state.activeTerminalId = data.activeTerminalId;
@@ -4012,4 +4174,167 @@ function restoreTerminalState() {
         }
     }
     return false;
+}
+
+// SSH Connection Logic
+window.switchSshModalTab = function(tabId) {
+    const listBtn = document.getElementById("ssh-tab-list-btn");
+    const formBtn = document.getElementById("ssh-tab-form-btn");
+    const listView = document.getElementById("ssh-modal-list-view");
+    const formView = document.getElementById("ssh-modal-form-view");
+    
+    if (tabId === "list") {
+        listBtn.classList.add("active");
+        formBtn.classList.remove("active");
+        listView.classList.remove("hidden");
+        formView.classList.add("hidden");
+        loadSshConnections();
+    } else {
+        formBtn.classList.add("active");
+        listBtn.classList.remove("active");
+        formView.classList.remove("hidden");
+        listView.classList.add("hidden");
+    }
+}
+
+async function loadSshConnections() {
+    const ul = document.getElementById("ssh-connections-list");
+    ul.innerHTML = '<li style="color:var(--text-muted); font-size:12px; text-align:center; padding:15px;">Carregando conexões...</li>';
+    
+    try {
+        const formData = new FormData();
+        formData.append("action", "ssh_connections_list");
+        const res = await fetch("api.php", { method: "POST", body: formData });
+        const data = await res.json();
+        
+        if (!data.success) throw new Error(data.message || "Erro");
+        
+        ul.innerHTML = "";
+        if (!data.connections || data.connections.length === 0) {
+            ul.innerHTML = '<li style="color:var(--text-muted); font-size:12px; text-align:center; padding:15px;">Nenhuma conexão salva.</li>';
+            return;
+        }
+        
+        data.connections.forEach(conn => {
+            const li = document.createElement("li");
+            li.style.padding = "10px 15px";
+            li.style.borderBottom = "1px solid var(--border-color)";
+            li.style.display = "flex";
+            li.style.justifyContent = "space-between";
+            li.style.alignItems = "center";
+            
+            li.innerHTML = `
+                <div>
+                    <div style="font-weight: 500; font-size: 13px;">${escapeHTML(conn.name)}</div>
+                    <div class="db-conn-meta">${escapeHTML(conn.username)}@${escapeHTML(conn.host)}:${conn.port || 22}</div>
+                </div>
+                <div class="db-conn-actions">
+                    <button class="action-icon-btn" onclick="openSshTerminal('${conn.id}', '${escapeHTML(conn.name)}')">🖥️ Conectar</button>
+                    <button class="action-icon-btn danger" onclick="deleteSshConnection('${conn.id}')">❌</button>
+                </div>
+            `;
+            ul.appendChild(li);
+        });
+    } catch (e) {
+        ul.innerHTML = '<li style="color:var(--accent-danger); font-size:12px; text-align:center; padding:15px;">Erro ao carregar conexões.</li>';
+    }
+}
+
+window.openSshTerminal = function(connId, connName) {
+    closeModal('modal-ssh-connection');
+    createTerminalTab('', 'ssh', connId, false);
+}
+
+async function saveSshConnection() {
+    const id = document.getElementById("ssh-conn-id").value;
+    const name = document.getElementById("ssh-conn-name").value;
+    const host = document.getElementById("ssh-host").value;
+    const port = document.getElementById("ssh-port").value;
+    const username = document.getElementById("ssh-username").value;
+    const password = document.getElementById("ssh-password").value;
+    
+    const formData = new FormData();
+    formData.append("action", "ssh_connection_save");
+    formData.append("id", id);
+    formData.append("name", name);
+    formData.append("host", host);
+    formData.append("port", port);
+    formData.append("username", username);
+    formData.append("password", password);
+    
+    try {
+        const res = await fetch("api.php", { method: "POST", body: formData });
+        const data = await res.json();
+        
+        if (data.success) {
+            showToast("Conexão SSH salva com sucesso", "success");
+            document.getElementById("form-ssh-connection").reset();
+            document.getElementById("ssh-conn-id").value = "";
+            switchSshModalTab("list");
+        } else {
+            showToast(data.message, "error");
+        }
+    } catch (e) {
+        showToast("Erro ao salvar conexão", "error");
+    }
+}
+
+window.testSshConnection = async function() {
+    const host = document.getElementById("ssh-host").value;
+    const port = document.getElementById("ssh-port").value;
+    const username = document.getElementById("ssh-username").value;
+    const password = document.getElementById("ssh-password").value;
+    
+    if (!host) {
+        showToast("Preencha o Host.", "error");
+        return;
+    }
+    
+    const formData = new FormData();
+    formData.append("action", "ssh_test_connection");
+    formData.append("host", host);
+    formData.append("port", port);
+    formData.append("username", username);
+    formData.append("password", password);
+    
+    const btn = event.target;
+    const oldText = btn.innerHTML;
+    btn.innerHTML = "⏳ Testando...";
+    btn.disabled = true;
+    
+    try {
+        const res = await fetch("api.php", { method: "POST", body: formData });
+        const data = await res.json();
+        if (data.success) {
+            showToast(data.message, "success");
+        } else {
+            showToast(data.message, "error");
+        }
+    } catch (e) {
+        showToast("Erro de comunicação.", "error");
+    } finally {
+        btn.innerHTML = oldText;
+        btn.disabled = false;
+    }
+}
+
+window.deleteSshConnection = async function(id) {
+    if (!confirm("Tem certeza que deseja remover esta conexão SSH?")) return;
+    
+    const formData = new FormData();
+    formData.append("action", "ssh_connection_delete");
+    formData.append("id", id);
+    
+    try {
+        const res = await fetch("api.php", { method: "POST", body: formData });
+        const data = await res.json();
+        if (data.success) {
+            showToast("Conexão removida.", "success");
+            loadSshConnections();
+        } else {
+            showToast(data.message, "error");
+        }
+    } catch (e) {
+        showToast("Erro de rede.", "error");
+    }
 }
