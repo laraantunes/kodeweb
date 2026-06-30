@@ -395,6 +395,7 @@ try {
             break;
 
         case 'terminal_cmd':
+            ob_start();
             $cmd = $_POST['cmd'] ?? '';
             $terminal_id = $_POST['terminal_id'] ?? 'default';
             
@@ -406,6 +407,7 @@ try {
             }
             
             if ($cmd === '') {
+                ob_end_clean();
                 echo json_encode(['success' => true, 'output' => '', 'cwd' => $_SESSION['terminal_cwd'][$terminal_id]]);
                 break;
             }
@@ -423,7 +425,7 @@ try {
                 $full_cmd = "cd " . escapeshellarg($current_cwd) . " && eval " . escapeshellarg($cmd) . " 2>&1; echo " . escapeshellarg($delimiter) . "; pwd";
             }
             
-            $output = shell_exec($full_cmd);
+            $output = @shell_exec($full_cmd);
             if ($output === null) {
                 $output = '';
             }
@@ -442,11 +444,17 @@ try {
                 }
             }
             
+            // Convert potentially non-UTF-8 output from Windows CMD to UTF-8
+            if (!mb_check_encoding($clean_output, 'UTF-8')) {
+                $clean_output = mb_convert_encoding($clean_output, 'UTF-8', 'ISO-8859-1, CP850, auto');
+            }
+            
+            ob_end_clean();
             echo json_encode([
                 'success' => true,
                 'output' => $clean_output,
                 'cwd' => $_SESSION['terminal_cwd'][$terminal_id]
-            ]);
+            ], JSON_INVALID_UTF8_SUBSTITUTE);
             break;
 
         case 'db_connections_list':
