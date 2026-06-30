@@ -259,6 +259,12 @@ async function fetchSystemStatus() {
             updateTerminalPrompt(data.terminal_cwd);
             // Populate database driver options
             populateDbDrivers(data.pdo_drivers);
+            
+            state.localEnv = data.local_env;
+            const envCheckbox = document.getElementById('options-env-local');
+            if (envCheckbox) {
+                envCheckbox.checked = data.local_env;
+            }
         }
     } catch (err) {
         console.error("Erro ao obter status do sistema:", err);
@@ -4336,5 +4342,89 @@ window.deleteSshConnection = async function(id) {
         }
     } catch (e) {
         showToast("Erro de rede.", "error");
+    }
+}
+
+// --- Options Modal Functions ---
+
+function openOptionsModal() {
+    switchOptionsTab('conn');
+    document.getElementById('modal-options').classList.add('active');
+}
+
+function switchOptionsTab(tab) {
+    const tabs = ['conn', 'env', 'user', 'about'];
+    tabs.forEach(t => {
+        const btn = document.getElementById(`options-tab-${t}-btn`);
+        const view = document.getElementById(`options-${t}-view`);
+        if (btn) btn.classList.toggle('active', t === tab);
+        if (view) {
+            if (t === tab) {
+                view.classList.remove('hidden');
+            } else {
+                view.classList.add('hidden');
+            }
+        }
+    });
+}
+
+async function saveOptionsEnv(event) {
+    event.preventDefault();
+    const isLocal = document.getElementById('options-env-local').checked;
+    
+    try {
+        const formData = new FormData();
+        formData.append('action', 'update_env');
+        formData.append('local_env', isLocal);
+        
+        const response = await fetch('api.php', {
+            method: 'POST',
+            body: formData
+        });
+        
+        const data = await response.json();
+        if (data.success) {
+            state.localEnv = isLocal;
+            showToast("Ambiente atualizado com sucesso. A página será recarregada.", "success");
+            setTimeout(() => window.location.reload(), 1500);
+        } else {
+            showToast("Erro: " + (data.message || data.error), "error");
+        }
+    } catch (err) {
+        showToast("Erro ao atualizar ambiente.", "error");
+    }
+}
+
+async function saveOptionsUser(event) {
+    event.preventDefault();
+    const username = document.getElementById('options-username').value;
+    const password = document.getElementById('options-password').value;
+    
+    if (!username || !password) {
+        showToast("Preencha ambos os campos.", "warning");
+        return;
+    }
+    
+    try {
+        const formData = new FormData();
+        formData.append('action', 'update_user');
+        formData.append('username', username);
+        formData.append('password', password);
+        
+        const response = await fetch('api.php', {
+            method: 'POST',
+            body: formData
+        });
+        
+        const data = await response.json();
+        if (data.success) {
+            showToast("Usuário atualizado com sucesso. Faça login novamente.", "success");
+            closeModal('modal-options');
+            setTimeout(() => window.location.href = 'logout.php', 1500);
+        } else {
+            showToast("Erro: " + (data.message || data.error), "error");
+        }
+    } catch (err) {
+        showToast("Erro ao atualizar usuário.", "error");
     }
 }

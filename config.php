@@ -1,5 +1,7 @@
 <?php
 
+$app_version = "v1.1";
+
 $local = false;
 $env_file = __DIR__ . '/.env';
 if (file_exists($env_file)) {

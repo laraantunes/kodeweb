@@ -4,6 +4,7 @@ header('Content-Type: application/json; charset=utf-8');
 
 define('IS_API', true);
 require_once __DIR__ . '/auth.php';
+require_once __DIR__ . '/config.php';
 require_once __DIR__ . '/encryption.php';
 require_once __DIR__ . '/vendor/autoload.php';
 
@@ -180,6 +181,7 @@ try {
                 'php_version' => PHP_VERSION,
                 'os' => PHP_OS,
                 'pdo_drivers' => PDO::getAvailableDrivers(),
+                'local_env' => (isset($GLOBALS['local']) ? $GLOBALS['local'] : false),
             ]);
             break;
 
@@ -519,8 +521,8 @@ try {
                 if ($decryptedData) {
                     $data = json_decode($decryptedData, true);
                     if ($data) {
-                        // Skip non-DB connections (like FTP)
-                        if (isset($data['type']) && $data['type'] === 'ftp') {
+                        // Skip non-DB connections (like FTP and SSH)
+                        if (isset($data['type']) && in_array($data['type'], ['ftp', 'ssh'])) {
                             continue;
                         }
                         // Omit password for safety
@@ -792,6 +794,38 @@ try {
             }
             
             $pdo->exec($sql);
+            echo json_encode(['success' => true]);
+            break;
+
+        case 'update_env':
+            $isLocal = isset($_POST['local_env']) && $_POST['local_env'] === 'true';
+            $env_file = __DIR__ . '/.env';
+            $envContent = "";
+            if (file_exists($env_file)) {
+                $envContent = file_get_contents($env_file);
+                // Remove existing LOCAL_ENV
+                $envContent = preg_replace('/^LOCAL_ENV=.*\n?/m', '', $envContent);
+            }
+            $envContent .= "LOCAL_ENV=" . ($isLocal ? '1' : '0') . "\n";
+            file_put_contents($env_file, trim($envContent) . "\n");
+            echo json_encode(['success' => true]);
+            break;
+
+        case 'update_user':
+            $username = $_POST['username'] ?? '';
+            $password = $_POST['password'] ?? '';
+            if (empty($username) || empty($password)) {
+                throw new Exception("Usuário e senha são obrigatórios.");
+            }
+            $auth_file = __DIR__ . '/data/auth.enc';
+            $jsonString = json_encode([
+                'username' => $username,
+                'password' => password_hash($password, PASSWORD_DEFAULT)
+            ]);
+            $encrypted = KodeWebEncryption::encrypt($jsonString);
+            if (file_put_contents($auth_file, $encrypted) === false) {
+                throw new Exception("Erro ao salvar arquivo de autenticação.");
+            }
             echo json_encode(['success' => true]);
             break;
 
