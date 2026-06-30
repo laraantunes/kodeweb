@@ -1499,3 +1499,21 @@ body {
     margin-top: 0;
     margin-bottom: 16px;
 }
+
+
+/* Terminal Tabs */
+.terminal-tab {
+    height: 24px;
+    font-size: 11px;
+    padding: 0 8px;
+    min-width: 60px;
+    background-color: #1a1a1a;
+    border: 1px solid #333;
+    border-radius: 4px 4px 0 0;
+    color: #bbb;
+}
+.terminal-tab.active {
+    background-color: #0b0114;
+    color: #499c54;
+    border-bottom: 1px solid #0b0114;
+}

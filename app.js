@@ -3,14 +3,16 @@
 // Application State
 const state = {
     workspaceRoot: '',
-    terminalCwd: '',
+    terminals: {
+        'term-1': { id: 'term-1', name: 'Terminal 1', cwd: '', history: [], historyIndex: -1, outputHTML: '<div class="terminal-line" style="color: var(--text-muted);">KodeWeb Terminal Emulator - Inicializado.</div>' }
+    },
+    activeTerminalId: 'term-1',
+    terminalCounter: 1,
     openTabs: {},         // filePath -> { path, name, session, isDirty }
     activeTabPath: null,
     selectedNode: null,   // Currently highlighted element in tree { path, isDir }
     expandedFolders: new Set(),
     activeConnectionId: null,
-    terminalHistory: [],
-    terminalHistoryIndex: -1,
     editor: null,
     allFiles: null,
     searchSelectedIndex: -1,
@@ -937,14 +939,21 @@ function updateBreadcrumb(path) {
 }
 
 // 7. Terminal Operations
-function updateTerminalPrompt(cwd) {
-    state.terminalCwd = cwd;
-    const shortCwd = cwd.replace(state.workspaceRoot, 'Workspace');
-    document.getElementById('terminal-prompt-path').textContent = `user@kodeweb:${shortCwd}$`;
+function updateTerminalPrompt(cwd, termId = null) {
+    termId = termId || state.activeTerminalId;
+    if (!state.terminals[termId]) return;
+    state.terminals[termId].cwd = cwd;
+    
+    if (termId === state.activeTerminalId) {
+        const shortCwd = cwd.replace(state.workspaceRoot, 'Workspace');
+        document.getElementById('terminal-prompt-path').textContent = `user@kodeweb:${shortCwd}$`;
+    }
 }
 
-function writeToTerminalConsole(text, type = 'output') {
-    const consoleDiv = document.getElementById('terminal-console');
+function writeToTerminalConsole(text, type = 'output', termId = null) {
+    termId = termId || state.activeTerminalId;
+    if (!state.terminals[termId]) return;
+    
     const line = document.createElement('div');
     line.className = 'terminal-line';
     
@@ -961,48 +970,56 @@ function writeToTerminalConsole(text, type = 'output') {
         if (type === 'error') line.style.color = 'var(--accent-error)';
     }
     
-    consoleDiv.appendChild(line);
-    consoleDiv.scrollTop = consoleDiv.scrollHeight;
+    state.terminals[termId].outputHTML += line.outerHTML;
+    
+    if (termId === state.activeTerminalId) {
+        const consoleDiv = document.getElementById('terminal-console');
+        consoleDiv.appendChild(line);
+        consoleDiv.scrollTop = consoleDiv.scrollHeight;
+    }
 }
 
-async function executeTerminalCommand(cmd) {
+async function executeTerminalCommand(cmd, termId = null) {
+    termId = termId || state.activeTerminalId;
+    const term = state.terminals[termId];
+    if (!term) return;
+    
     cmd = cmd.trim();
     if (!cmd) return;
     
-    // Save to history
-    state.terminalHistory.push(cmd);
-    state.terminalHistoryIndex = state.terminalHistory.length;
+    term.history.push(cmd);
+    term.historyIndex = term.history.length;
+    saveTerminalState();
     
-    // Write request to console
-    const promptPath = document.getElementById('terminal-prompt-path').textContent;
-    writeToTerminalConsole({ prefix: promptPath, cmd: cmd }, 'cmd');
+    const shortCwd = term.cwd.replace(state.workspaceRoot, 'Workspace');
+    const promptPath = `user@kodeweb:${shortCwd}$`;
+    writeToTerminalConsole({ prefix: promptPath, cmd: cmd }, 'cmd', termId);
     
     if (cmd === 'clear' || cmd === 'cls') {
-        document.getElementById('terminal-console').innerHTML = '';
+        term.outputHTML = '';
+        if (termId === state.activeTerminalId) {
+            document.getElementById('terminal-console').innerHTML = '';
+        }
         return;
     }
     
     const formData = new FormData();
     formData.append('action', 'terminal_cmd');
     formData.append('cmd', cmd);
+    formData.append('terminal_id', termId);
     
     try {
-        const response = await fetch('api.php', {
-            method: 'POST',
-            body: formData
-        });
+        const response = await fetch('api.php', { method: 'POST', body: formData });
         const data = await response.json();
         
         if (data.success) {
-            if (data.output) {
-                writeToTerminalConsole(data.output);
-            }
-            updateTerminalPrompt(data.cwd);
+            if (data.output) writeToTerminalConsole(data.output, 'output', termId);
+            updateTerminalPrompt(data.cwd, termId);
         } else {
-            writeToTerminalConsole(data.message || 'Erro desconhecido.', 'error');
+            writeToTerminalConsole(data.message || 'Erro desconhecido.', 'error', termId);
         }
     } catch (err) {
-        writeToTerminalConsole("Falha de conexão com o servidor: " + err.message, 'error');
+        writeToTerminalConsole("Falha de conexão com o servidor: " + err.message, 'error', termId);
     }
 }
 
@@ -1331,17 +1348,19 @@ function initEventListeners() {
             executeTerminalCommand(cmd);
         } else if (e.key === 'ArrowUp') {
             e.preventDefault();
-            if (state.terminalHistoryIndex > 0) {
-                state.terminalHistoryIndex--;
-                e.target.value = state.terminalHistory[state.terminalHistoryIndex];
+            const term = state.terminals[state.activeTerminalId];
+            if (term && term.historyIndex > 0) {
+                term.historyIndex--;
+                e.target.value = term.history[term.historyIndex];
             }
         } else if (e.key === 'ArrowDown') {
             e.preventDefault();
-            if (state.terminalHistoryIndex < state.terminalHistory.length - 1) {
-                state.terminalHistoryIndex++;
-                e.target.value = state.terminalHistory[state.terminalHistoryIndex];
-            } else {
-                state.terminalHistoryIndex = state.terminalHistory.length;
+            const term = state.terminals[state.activeTerminalId];
+            if (term && term.historyIndex < term.history.length - 1) {
+                term.historyIndex++;
+                e.target.value = term.history[term.historyIndex];
+            } else if (term) {
+                term.historyIndex = term.history.length;
                 e.target.value = '';
             }
         }
@@ -3816,4 +3835,181 @@ async function transferFtpToLocal(ftpPathStr, targetDir) {
     } catch (e) {
         showToast("Erro na transferência: " + e.message, "error");
     }
+}
+
+
+// 9. Multiple Terminals Management
+function createTerminalTab(cwd = '') {
+    state.terminalCounter++;
+    const termId = 'term-' + state.terminalCounter;
+    state.terminals[termId] = {
+        id: termId,
+        name: 'Terminal ' + state.terminalCounter,
+        cwd: cwd || WORKSPACE_ROOT || '',
+        history: [],
+        historyIndex: -1,
+        outputHTML: '<div class="terminal-line" style="color: var(--text-muted);">KodeWeb Terminal Emulator - Inicializado.</div>'
+    };
+    
+    saveTerminalState();
+    
+    // Add to UI
+    renderTerminalTabs();
+    activateTerminalTab(termId);
+}
+
+function closeTerminalTab(termId) {
+    const keys = Object.keys(state.terminals);
+    if (keys.length <= 1) return; // Don't close the last terminal
+    
+    delete state.terminals[termId];
+    
+    saveTerminalState();
+    if (state.activeTerminalId === termId) {
+        const remainingKeys = Object.keys(state.terminals);
+        activateTerminalTab(remainingKeys[remainingKeys.length - 1]);
+    } else {
+        renderTerminalTabs();
+    }
+}
+
+function activateTerminalTab(termId) {
+    if (!state.terminals[termId]) return;
+    
+    state.activeTerminalId = termId;
+    const term = state.terminals[termId];
+    
+    // Update console
+    document.getElementById('terminal-console').innerHTML = term.outputHTML;
+    document.getElementById('terminal-console').scrollTop = document.getElementById('terminal-console').scrollHeight;
+    
+    // Update prompt
+    updateTerminalPrompt(term.cwd, termId);
+    
+    // Render tabs
+    renderTerminalTabs();
+    
+    // Focus input
+    document.getElementById('terminal-input').focus();
+}
+
+function renderTerminalTabs() {
+    const container = document.getElementById('terminal-tabs-container');
+    if (!container) return;
+    container.innerHTML = '';
+    
+    Object.values(state.terminals).forEach(term => {
+        const tab = document.createElement('div');
+        tab.className = 'tab terminal-tab';
+        if (term.id === state.activeTerminalId) tab.classList.add('active');
+        
+        const title = document.createElement('span');
+        title.textContent = term.name;
+        title.title = "Duplo clique para renomear";
+        title.addEventListener('dblclick', (e) => {
+            e.stopPropagation();
+            showPrompt("Renomear Terminal", "Digite o novo nome:", term.name, (newName) => {
+                if (newName && newName.trim()) {
+                    term.name = newName.trim();
+                    saveTerminalState();
+                    renderTerminalTabs();
+                }
+            });
+        });
+        tab.appendChild(title);
+        
+        if (Object.keys(state.terminals).length > 1) {
+            const closeBtn = document.createElement('span');
+            closeBtn.className = 'tab-close';
+            closeBtn.textContent = '×';
+            closeBtn.style.marginLeft = '4px';
+            closeBtn.addEventListener('click', (e) => {
+                e.stopPropagation();
+                closeTerminalTab(term.id);
+            });
+            tab.appendChild(closeBtn);
+        }
+        
+        tab.addEventListener('click', () => {
+            activateTerminalTab(term.id);
+        });
+        
+        tab.addEventListener('mousedown', (e) => {
+            if (e.button === 1) { // Middle click
+                e.preventDefault();
+                e.stopPropagation();
+                if (Object.keys(state.terminals).length > 1) {
+                    closeTerminalTab(term.id);
+                }
+            }
+        });
+        
+        container.appendChild(tab);
+    });
+}
+
+// Add event listener for new terminal button
+document.addEventListener('DOMContentLoaded', () => {
+    const addTermBtn = document.getElementById('btn-add-terminal');
+    if (addTermBtn) {
+        addTermBtn.addEventListener('click', () => {
+            createTerminalTab(state.terminals[state.activeTerminalId].cwd);
+        });
+    }
+    
+    if (!restoreTerminalState()) {
+        // Set initial WORKSPACE_ROOT to term-1 if it was loaded
+        if (state.terminals['term-1']) {
+            setTimeout(renderTerminalTabs, 1000); // Give it a sec to load the UI
+        }
+    }
+});
+
+function saveTerminalState() {
+    const termState = {
+        terminals: {},
+        activeTerminalId: state.activeTerminalId,
+        terminalCounter: state.terminalCounter
+    };
+    
+    for (const [id, term] of Object.entries(state.terminals)) {
+        termState.terminals[id] = {
+            id: term.id,
+            name: term.name,
+            cwd: term.cwd,
+            history: term.history,
+            historyIndex: term.historyIndex
+        };
+    }
+    
+    localStorage.setItem('kodeweb_terminals', JSON.stringify(termState));
+}
+
+function restoreTerminalState() {
+    const saved = localStorage.getItem('kodeweb_terminals');
+    if (saved) {
+        try {
+            const data = JSON.parse(saved);
+            if (data.terminals && Object.keys(data.terminals).length > 0) {
+                state.terminals = {};
+                for (const [id, term] of Object.entries(data.terminals)) {
+                    state.terminals[id] = {
+                        ...term,
+                        outputHTML: '<div class="terminal-line" style="color: var(--text-muted);">KodeWeb Terminal Emulator - Restaurado.</div>'
+                    };
+                }
+                state.activeTerminalId = data.activeTerminalId;
+                state.terminalCounter = data.terminalCounter;
+                
+                renderTerminalTabs();
+                if (state.activeTerminalId) {
+                    activateTerminalTab(state.activeTerminalId);
+                }
+                return true;
+            }
+        } catch (e) {
+            console.error('Failed to parse terminal state', e);
+        }
+    }
+    return false;
 }

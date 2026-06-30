@@ -319,10 +319,16 @@ require_once('config.php');
 
             <!-- Bottom panel (Terminal) -->
             <section class="terminal-panel" id="panel-bottom" style="height: 220px;">
-                <div class="sidebar-header" style="background-color: #151515;">
-                    <span>Terminal</span>
-                    <span style="font-size: 11px; text-transform: none; color: var(--text-muted);">Execução no
-                        Servidor</span>
+                <div class="sidebar-header" style="background-color: #151515; display: flex; align-items: center; justify-content: space-between; padding-right: 10px;">
+                    <div style="display: flex; align-items: center; gap: 10px; flex: 1; overflow-x: auto;">
+                        <span style="flex-shrink: 0;">Terminal</span>
+                        <div class="tabs-bar terminal-tabs-bar" id="terminal-tabs-container" style="flex: 1; border-bottom: none; background: transparent; padding: 0; min-height: unset; height: 24px; display: flex; gap: 4px; overflow-x: auto;">
+                            <!-- Dynamic terminal tabs load here -->
+                        </div>
+                    </div>
+                    <div style="display: flex; gap: 4px; flex-shrink: 0; margin-left: 10px;">
+                        <button class="btn btn-sm tooltip-left" id="btn-add-terminal" data-tooltip="Novo Terminal" style="padding: 2px 6px; font-size:10px;">+ Aba</button>
+                    </div>
                 </div>
                 <div class="terminal-input-row">
                     <span class="terminal-prompt" id="terminal-prompt-path">user@kodeweb:Workspace$</span>

@@ -153,7 +153,7 @@ try {
             echo json_encode([
                 'success' => true,
                 'workspace_root' => WORKSPACE_ROOT,
-                'terminal_cwd' => $_SESSION['terminal_cwd'] ?? WORKSPACE_ROOT,
+                'terminal_cwd' => (isset($_SESSION['terminal_cwd']) && is_array($_SESSION['terminal_cwd'])) ? ($_SESSION['terminal_cwd']['default'] ?? WORKSPACE_ROOT) : ($_SESSION['terminal_cwd'] ?? WORKSPACE_ROOT),
                 'php_version' => PHP_VERSION,
                 'os' => PHP_OS,
                 'pdo_drivers' => PDO::getAvailableDrivers(),
@@ -396,22 +396,37 @@ try {
 
         case 'terminal_cmd':
             $cmd = $_POST['cmd'] ?? '';
+            $terminal_id = $_POST['terminal_id'] ?? 'default';
+            
+            if (!isset($_SESSION['terminal_cwd']) || !is_array($_SESSION['terminal_cwd'])) {
+                $_SESSION['terminal_cwd'] = [];
+            }
+            if (!isset($_SESSION['terminal_cwd'][$terminal_id])) {
+                $_SESSION['terminal_cwd'][$terminal_id] = WORKSPACE_ROOT;
+            }
+            
             if ($cmd === '') {
-                echo json_encode(['success' => true, 'output' => '', 'cwd' => $_SESSION['terminal_cwd']]);
+                echo json_encode(['success' => true, 'output' => '', 'cwd' => $_SESSION['terminal_cwd'][$terminal_id]]);
                 break;
             }
             
-            if (!isset($_SESSION['terminal_cwd'])) {
-                $_SESSION['terminal_cwd'] = WORKSPACE_ROOT;
-            }
-            
-            $current_cwd = $_SESSION['terminal_cwd'];
+            $current_cwd = $_SESSION['terminal_cwd'][$terminal_id];
             $delimiter = "---KODEWEB_PWD_DELIMITER---";
             
             // Build the execution command that outputs the new directory at the end
-            $full_cmd = "cd " . escapeshellarg($current_cwd) . " && eval " . escapeshellarg($cmd) . " 2>&1; echo " . escapeshellarg($delimiter) . "; pwd";
+            $is_win = strtoupper(substr(PHP_OS, 0, 3)) === 'WIN';
+            if ($is_win) {
+                // Windows cmd.exe chaining
+                $full_cmd = "cd /d " . escapeshellarg($current_cwd) . " & " . $cmd . " 2>&1 & echo " . $delimiter . " & cd";
+            } else {
+                // Unix sh chaining
+                $full_cmd = "cd " . escapeshellarg($current_cwd) . " && eval " . escapeshellarg($cmd) . " 2>&1; echo " . escapeshellarg($delimiter) . "; pwd";
+            }
             
             $output = shell_exec($full_cmd);
+            if ($output === null) {
+                $output = '';
+            }
             $clean_output = $output;
             $new_cwd = $current_cwd;
             
@@ -421,7 +436,7 @@ try {
                 $new_cwd = trim($parts[1]);
                 
                 if (is_dir($new_cwd)) {
-                    $_SESSION['terminal_cwd'] = $new_cwd;
+                    $_SESSION['terminal_cwd'][$terminal_id] = $new_cwd;
                 } else {
                     $new_cwd = $current_cwd;
                 }
@@ -430,7 +445,7 @@ try {
             echo json_encode([
                 'success' => true,
                 'output' => $clean_output,
-                'cwd' => $_SESSION['terminal_cwd']
+                'cwd' => $_SESSION['terminal_cwd'][$terminal_id]
             ]);
             break;
 
