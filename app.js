@@ -468,14 +468,29 @@ function showTreeContextMenu(e, path, name, isDir) {
     }
 
     const uploadItem = document.getElementById('ctx-upload');
+    const newFileItem = document.getElementById('ctx-new-file');
+    const newFolderItem = document.getElementById('ctx-new-folder');
+    
     if (isDir) {
         uploadItem.style.display = 'flex';
         uploadItem.onclick = () => {
             menu.classList.remove('active');
             openUploadModal(path);
         };
+        newFileItem.style.display = 'flex';
+        newFileItem.onclick = () => {
+            menu.classList.remove('active');
+            openNewNodeModal('file', path);
+        };
+        newFolderItem.style.display = 'flex';
+        newFolderItem.onclick = () => {
+            menu.classList.remove('active');
+            openNewNodeModal('dir', path);
+        };
     } else {
         uploadItem.style.display = 'none';
+        newFileItem.style.display = 'none';
+        newFolderItem.style.display = 'none';
     }
 
     document.getElementById('ctx-rename').onclick = () => {
@@ -1667,10 +1682,12 @@ function initEventListeners() {
     });
 }
 
-function openNewNodeModal(type) {
-    const parentPath = state.selectedNode && state.selectedNode.dataset.isDir === 'true'
-        ? state.selectedNode.dataset.path 
-        : '';
+function openNewNodeModal(type, overrideParentPath = null) {
+    const parentPath = overrideParentPath !== null 
+        ? overrideParentPath 
+        : (state.selectedNode && state.selectedNode.dataset.isDir === 'true'
+            ? state.selectedNode.dataset.path 
+            : '');
         
     document.getElementById('new-node-type').value = type;
     document.getElementById('new-node-parent').value = parentPath;
