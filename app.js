@@ -5038,3 +5038,33 @@ async function saveOptionsUser(event) {
         showToast("Erro ao atualizar usuário.", "error");
     }
 }
+
+async function updateKodeWeb(btn) {
+    if (!confirm("Tem certeza que deseja atualizar a aplicação? Isso executará 'git pull origin main'.")) return;
+    
+    const originalText = btn.innerText;
+    btn.innerText = "Atualizando...";
+    btn.disabled = true;
+    
+    try {
+        const response = await fetch('api.php?action=update_kodeweb');
+        const data = await response.json();
+        
+        if (data.success) {
+            showToast("Aplicação atualizada com sucesso! Recarregando...", "success");
+            setTimeout(() => window.location.reload(), 1500);
+        } else {
+            showToast("Erro ao atualizar: " + (data.message || data.error), "error");
+            btn.innerText = originalText;
+            btn.disabled = false;
+            
+            if (data.output) {
+                console.error("Git output:", data.output);
+            }
+        }
+    } catch (err) {
+        showToast("Erro de rede ao atualizar a aplicação.", "error");
+        btn.innerText = originalText;
+        btn.disabled = false;
+    }
+}

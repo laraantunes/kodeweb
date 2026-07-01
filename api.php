@@ -172,6 +172,22 @@ $action = $_GET['action'] ?? $_POST['action'] ?? '';
 
 try {
     switch ($action) {
+        case 'update_kodeweb':
+            $output = [];
+            $return_var = 0;
+            $cwd = getcwd();
+            // Change directory to kodeweb root which is the current directory of this file
+            chdir(__DIR__);
+            exec('git pull origin main 2>&1', $output, $return_var);
+            chdir($cwd);
+            
+            if ($return_var === 0) {
+                echo json_encode(['success' => true, 'output' => implode("\n", $output)]);
+            } else {
+                echo json_encode(['success' => false, 'error' => "Falha ao executar o git pull.", 'output' => implode("\n", $output)]);
+            }
+            break;
+
         case 'status':
             $auth_file = __DIR__ . '/data/auth.enc';
             $username = '';

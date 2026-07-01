@@ -942,6 +942,9 @@ if (file_exists($auth_file)) {
                     <p style="margin-top: 10px; font-size: 13px; color: var(--text-muted);">
                         <a href="https://github.com/laraantunes/kodeweb" target="_blank" style="color: var(--accent); text-decoration: none;">https://github.com/laraantunes/kodeweb</a>
                     </p>
+                    <div style="margin-top: 20px;">
+                        <button class="btn btn-primary" id="btn-update-kodeweb" onclick="updateKodeWeb(this)">Atualizar Aplicação (via git)</button>
+                    </div>
                 </div>
             </div>
             
