@@ -4151,7 +4151,7 @@ function createTerminalTab(cwd = '', type = 'local', connId = null, reconnect = 
     state.terminals[termId] = {
         id: termId,
         name: name,
-        cwd: cwd || (type === 'local' ? WORKSPACE_ROOT : '') || '',
+        cwd: cwd || (type === 'local' ? state.workspaceRoot : '') || '',
         history: [],
         historyIndex: -1,
         autocompleteList: [],
