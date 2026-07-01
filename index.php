@@ -127,7 +127,7 @@ if (file_exists($auth_file)) {
                             style="height: 64px; width: 64px; margin-bottom: 12px; opacity: 0.85;">
                         <h3>Boas-vindas ao KodeWeb</h3>
                         <p style="margin-top: 8px; font-size:13px; color: var(--text-muted); margin-bottom: 20px;">Abra
-                            um arquivo na barra lateral para começar a programar.</p>
+                            um arquivo na barra lateral para começar.</p>
 
                         <div
                             style="max-width: 320px; margin: 0 auto; text-align: left; background: var(--bg-secondary); border: 1px solid var(--border-color); border-radius: 6px; padding: 12px 16px;">

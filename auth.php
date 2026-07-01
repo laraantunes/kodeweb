@@ -1,12 +1,7 @@
 <?php
 // auth.php - Session and Authentication Controller
 
-ini_set('session.gc_maxlifetime', 86400); // 24 hours
-session_set_cookie_params(86400);
-
-if (session_status() === PHP_SESSION_NONE) {
-    session_start();
-}
+require_once __DIR__ . '/session.php';
 
 $is_api = defined('IS_API') && IS_API;
 $auth_file = __DIR__ . '/data/auth.enc';

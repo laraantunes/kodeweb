@@ -1,9 +1,7 @@
 <?php
 // login.php
 
-ini_set('session.gc_maxlifetime', 86400); // 24 hours
-session_set_cookie_params(86400);
-session_start();
+require_once __DIR__ . '/session.php';
 
 $auth_file = __DIR__ . '/data/auth.enc';
 
