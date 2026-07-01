@@ -4564,25 +4564,25 @@ window.testSshConnection = async function() {
     }
 }
 
-window.deleteSshConnection = async function(id) {
-    if (!confirm("Tem certeza que deseja remover esta conexão SSH?")) return;
-    
-    const formData = new FormData();
-    formData.append("action", "ssh_connection_delete");
-    formData.append("id", id);
-    
-    try {
-        const res = await fetch("api.php", { method: "POST", body: formData });
-        const data = await res.json();
-        if (data.success) {
-            showToast("Conexão removida.", "success");
-            loadSshConnections();
-        } else {
-            showToast(data.message, "error");
+window.deleteSshConnection = function(id) {
+    showConfirm("Tem certeza que deseja remover esta conexão SSH?", async () => {
+        const formData = new FormData();
+        formData.append("action", "ssh_connection_delete");
+        formData.append("id", id);
+        
+        try {
+            const res = await fetch("api.php", { method: "POST", body: formData });
+            const data = await res.json();
+            if (data.success) {
+                showToast("Conexão removida.", "success");
+                loadSshConnections();
+            } else {
+                showToast(data.message, "error");
+            }
+        } catch (e) {
+            showToast("Erro de rede.", "error");
         }
-    } catch (e) {
-        showToast("Erro de rede.", "error");
-    }
+    });
 }
 
 // --- Options Modal Functions ---
@@ -5039,32 +5039,32 @@ async function saveOptionsUser(event) {
     }
 }
 
-async function updateKodeWeb(btn) {
-    if (!confirm("Tem certeza que deseja atualizar a aplicação? Isso executará 'git pull origin main'.")) return;
-    
-    const originalText = btn.innerText;
-    btn.innerText = "Atualizando...";
-    btn.disabled = true;
-    
-    try {
-        const response = await fetch('api.php?action=update_kodeweb');
-        const data = await response.json();
+function updateKodeWeb(btn) {
+    showConfirm("Tem certeza que deseja atualizar a aplicação? Isso executará 'git pull origin main'.", async () => {
+        const originalText = btn.innerText;
+        btn.innerText = "Atualizando...";
+        btn.disabled = true;
         
-        if (data.success) {
-            showToast("Aplicação atualizada com sucesso! Recarregando...", "success");
-            setTimeout(() => window.location.reload(), 1500);
-        } else {
-            showToast("Erro ao atualizar: " + (data.message || data.error), "error");
+        try {
+            const response = await fetch('api.php?action=update_kodeweb');
+            const data = await response.json();
+            
+            if (data.success) {
+                showToast("Aplicação atualizada com sucesso! Recarregando...", "success");
+                setTimeout(() => window.location.reload(), 1500);
+            } else {
+                showToast("Erro ao atualizar: " + (data.message || data.error), "error");
+                btn.innerText = originalText;
+                btn.disabled = false;
+                
+                if (data.output) {
+                    console.error("Git output:", data.output);
+                }
+            }
+        } catch (err) {
+            showToast("Erro de rede ao atualizar a aplicação.", "error");
             btn.innerText = originalText;
             btn.disabled = false;
-            
-            if (data.output) {
-                console.error("Git output:", data.output);
-            }
         }
-    } catch (err) {
-        showToast("Erro de rede ao atualizar a aplicação.", "error");
-        btn.innerText = originalText;
-        btn.disabled = false;
-    }
+    });
 }

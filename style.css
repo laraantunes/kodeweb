@@ -687,6 +687,11 @@ body {
     pointer-events: auto;
 }
 
+#modal-confirm,
+#modal-prompt {
+    z-index: 1050;
+}
+
 .modal-content {
     background-color: var(--bg-secondary);
     border: 1px solid var(--border-color);
