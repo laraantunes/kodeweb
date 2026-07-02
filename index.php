@@ -943,6 +943,201 @@ if (file_exists($auth_file)) {
                         <a href="https://github.com/laraantunes/kodeweb" target="_blank" style="color: var(--accent); text-decoration: none;">https://github.com/laraantunes/kodeweb</a>
                     </p>
                     <div style="margin-top: 20px;">
+    </div>
+
+    <!-- Prompt Modal overlay -->
+    <div class="modal-overlay" id="modal-prompt">
+        <div class="modal-content" style="width: 380px;">
+            <h3 class="modal-header" id="prompt-modal-title">Entrada</h3>
+            <form id="form-prompt-modal">
+                <div class="form-group">
+                    <label class="form-label" id="prompt-modal-label" for="prompt-modal-input">Valor</label>
+                    <input type="text" class="form-input" id="prompt-modal-input" required>
+                </div>
+                <div class="form-actions">
+                    <button type="button" class="btn" onclick="closeModal('modal-prompt')">Cancelar</button>
+                    <button type="submit" class="btn btn-primary">Confirmar</button>
+                </div>
+            </form>
+        </div>
+    </div>
+
+    <!-- Global File Search Modal (Ctrl + P) -->
+    <div class="modal-overlay search-overlay" id="modal-global-search">
+        <div class="modal-content search-modal-content">
+            <div class="search-modal-header">
+                <input type="text" id="global-search-input" placeholder="Digite para pesquisar arquivos... (Ctrl+P)" autocomplete="off">
+            </div>
+            <div class="search-results-list" id="global-search-results">
+                <!-- Results will load here dynamically -->
+            </div>
+            <div class="search-modal-footer">
+                <span>Use <kbd>↑</kbd> <kbd>↓</kbd> para navegar, <kbd>Enter</kbd> para abrir e <kbd>Esc</kbd> para fechar.</span>
+            </div>
+        </div>
+    </div>
+
+    <!-- Modal for DB Row Add/Edit -->
+    <div class="modal-overlay" id="modal-db-row">
+        <div class="modal-content" style="width: 500px; max-width: 95%; max-height: 85vh; display: flex; flex-direction: column;">
+            <h3 class="modal-header" id="modal-db-row-title">Inserir Registro</h3>
+            <form id="form-db-row" style="overflow-y: auto; flex: 1; padding-right: 4px;">
+                <div id="db-row-fields-container">
+                    <!-- Dynamically populated field inputs -->
+                </div>
+                <div class="form-actions" style="margin-top: 20px; padding-top: 10px; border-top: 1px solid var(--border-color);">
+                    <button type="button" class="btn" onclick="closeModal('modal-db-row')">Cancelar</button>
+                    <button type="submit" class="btn btn-primary" id="btn-save-db-row">Salvar</button>
+                </div>
+            </form>
+        </div>
+    </div>
+
+    <!-- Modal for DB Column Add/Edit -->
+    <div class="modal-overlay" id="modal-db-column">
+        <div class="modal-content" style="width: 400px; max-width: 90%;">
+            <h3 class="modal-header" id="modal-db-column-title">Adicionar Coluna</h3>
+            <form id="form-db-column">
+                <input type="hidden" id="db-col-is-edit" value="false">
+                <input type="hidden" id="db-col-old-name" value="">
+                
+                <div class="form-group">
+                    <label class="form-label" for="db-col-name">Nome da Coluna</label>
+                    <input type="text" class="form-input" id="db-col-name" placeholder="ex: email" required>
+                </div>
+                
+                <div class="form-group">
+                    <label class="form-label" for="db-col-type">Tipo</label>
+                    <input type="text" class="form-input" id="db-col-type" placeholder="ex: varchar(255) ou INT" required>
+                </div>
+                
+                <div class="form-group" style="display: flex; align-items: center; gap: 8px; margin-top: 15px;">
+                    <input type="checkbox" id="db-col-nullable" checked style="width: 16px; height: 16px;">
+                    <label class="form-label" for="db-col-nullable" style="margin-bottom: 0; cursor: pointer;">Permitir Nulo (NULL)</label>
+                </div>
+                
+                <div class="form-group" style="margin-top: 15px;">
+                    <label class="form-label" for="db-col-default">Valor Padrão</label>
+                    <input type="text" class="form-input" id="db-col-default" placeholder="ex: NULL, CURRENT_TIMESTAMP ou valor literal">
+                </div>
+                
+                <div class="form-actions">
+                    <button type="button" class="btn" onclick="closeModal('modal-db-column')">Cancelar</button>
+                    <button type="submit" class="btn btn-primary" id="btn-save-db-column">Salvar</button>
+                </div>
+            </form>
+        </div>
+    </div>
+
+    <!-- Modal for Help / Keyboard Shortcuts -->
+    <div class="modal-overlay" id="modal-help">
+        <div class="modal-content" style="width: 550px; max-width: 95%; max-height: 80vh; display: flex; flex-direction: column;">
+            <h3 class="modal-header" style="border-bottom: 1px solid var(--border-color); padding-bottom: 10px; margin-bottom: 10px; display: flex; justify-content: space-between; align-items: center;">
+                <span>Atalhos de Teclado & Ajuda</span>
+                <span class="close-modal-btn" onclick="closeModal('modal-help')" style="cursor: pointer; font-size: 20px; opacity: 0.7;">&times;</span>
+            </h3>
+            <div class="help-modal-body" style="overflow-y: auto; flex: 1; padding-right: 4px;">
+                
+                <h4 class="help-section-title">Navegação e Sistema</h4>
+                <table class="help-shortcuts-table">
+                    <tr><td><kbd>Ctrl + P</kbd></td><td>Pesquisa rápida de arquivos (Go to File)</td></tr>
+                    <tr><td><kbd>Ctrl + S</kbd></td><td>Salvar arquivo atual</td></tr>
+                    <tr><td><kbd>Alt + W</kbd></td><td>Fechar aba atual</td></tr>
+                    <tr><td><kbd>Alt + ,</kbd> e <kbd>Alt + .</kbd></td><td>Navegar entre abas (Anterior / Próxima)</td></tr>
+                </table>
+
+                <h4 class="help-section-title">Edição no Editor (Ace)</h4>
+                <table class="help-shortcuts-table">
+                    <tr><td><kbd>Ctrl + F</kbd></td><td>Buscar texto no arquivo</td></tr>
+                    <tr><td><kbd>Ctrl + H</kbd></td><td>Buscar e substituir texto</td></tr>
+                    <tr><td><kbd>Ctrl + L</kbd></td><td>Ir para uma linha específica</td></tr>
+                    <tr><td><kbd>Ctrl + Z</kbd></td><td>Desfazer última alteração</td></tr>
+                    <tr><td><kbd>Ctrl + Y</kbd> / <kbd>Ctrl + Shift + Z</kbd></td><td>Refazer alteração</td></tr>
+                    <tr><td><kbd>Ctrl + D</kbd></td><td>Remover linha atual</td></tr>
+                    <tr><td><kbd>Ctrl + /</kbd></td><td>Comentar / Descomentar linha</td></tr>
+                    <tr><td><kbd>Alt + ↑ / ↓</kbd></td><td>Mover linha selecionada para cima / baixo</td></tr>
+                    <tr><td><kbd>Alt + Shift + ↑ / ↓</kbd></td><td>Duplicar linha selecionada acima / abaixo</td></tr>
+                    <tr><td><kbd>Ctrl + Alt + ↑ / ↓</kbd></td><td>Adicionar cursor multi-linha acima / abaixo</td></tr>
+                    <tr><td><kbd>Tab</kbd> / <kbd>Shift + Tab</kbd></td><td>Avançar / Recuar tabulação (identação)</td></tr>
+                </table>
+
+                <h4 class="help-section-title">Terminal Integrado</h4>
+                <table class="help-shortcuts-table">
+                    <tr><td><kbd>↑</kbd> / <kbd>↓</kbd></td><td>Navegar pelo histórico de comandos</td></tr>
+                    <tr><td><kbd>clear</kbd></td><td>Digitar no terminal para limpar o histórico visual</td></tr>
+                </table>
+
+                <h4 class="help-section-title">Explorador de Arquivos</h4>
+                <table class="help-shortcuts-table">
+                    <tr><td><kbd>Duplo Clique</kbd></td><td>Abrir arquivo selecionado</td></tr>
+                </table>
+                
+            </div>
+            <div class="form-actions" style="margin-top: 15px; padding-top: 10px; border-top: 1px solid var(--border-color);">
+                <button type="button" class="btn btn-primary" onclick="closeModal('modal-help')">Fechar</button>
+            </div>
+        </div>
+    </div>
+
+    <!-- Modal for Options -->
+    <div class="modal-overlay" id="modal-options">
+        <div class="modal-content" style="width: 500px; max-width: 95%; max-height: 80vh; display: flex; flex-direction: column;">
+            <h3 class="modal-header">Opções</h3>
+            
+            <div class="db-table-tabs" style="margin-bottom: 15px; justify-content: flex-start; gap: 10px;">
+                <button class="db-tab-btn active" id="options-tab-conn-btn" onclick="switchOptionsTab('conn')" style="border-radius: 4px;">Conexões</button>
+                <button class="db-tab-btn" id="options-tab-env-btn" onclick="switchOptionsTab('env')" style="border-radius: 4px;">Ambiente</button>
+                <button class="db-tab-btn" id="options-tab-user-btn" onclick="switchOptionsTab('user')" style="border-radius: 4px;">Usuário</button>
+                <button class="db-tab-btn" id="options-tab-about-btn" onclick="switchOptionsTab('about')" style="border-radius: 4px;">Sobre</button>
+            </div>
+            
+            <div id="options-conn-view">
+                <div style="display: flex; flex-direction: column; gap: 10px;">
+                    <button class="btn btn-primary" onclick="closeModal('modal-options'); document.getElementById('modal-db-connections-list').classList.add('active'); loadDbConnectionsModalList();">Conexões DB</button>
+                    <button class="btn btn-primary" onclick="closeModal('modal-options'); document.getElementById('modal-ftp-connection').classList.add('active'); switchFtpModalTab('list');">Conexões FTP</button>
+                    <button class="btn btn-primary" onclick="closeModal('modal-options'); document.getElementById('modal-ssh-connection').classList.add('active'); switchSshModalTab('list');">Conexões SSH</button>
+                </div>
+            </div>
+            
+            <div id="options-env-view" class="hidden">
+                <form id="form-options-env" onsubmit="saveOptionsEnv(event)">
+                    <div class="form-group" style="display: flex; align-items: center; gap: 8px;">
+                        <input type="checkbox" id="options-env-local" style="width: 16px; height: 16px;">
+                        <label class="form-label" for="options-env-local" style="margin-bottom: 0; cursor: pointer;">Ambiente Local (LOCAL_ENV=1)</label>
+                    </div>
+                    <div class="form-actions" style="margin-top: 15px;">
+                        <button type="submit" class="btn btn-primary">Salvar Ambiente</button>
+                    </div>
+                </form>
+            </div>
+
+            <div id="options-user-view" class="hidden">
+                <form id="form-options-user" onsubmit="saveOptionsUser(event)">
+                    <div class="form-group">
+                        <label class="form-label" for="options-username">Usuário</label>
+                        <input type="text" class="form-input" id="options-username" required>
+                    </div>
+                    <div class="form-group">
+                        <label class="form-label" for="options-password">Nova Senha (deixe em branco para não alterar)</label>
+                        <input type="password" class="form-input" id="options-password" placeholder="Nova senha...">
+                    </div>
+                    <div class="form-actions" style="margin-top: 15px;">
+                        <button type="submit" class="btn btn-primary">Salvar Usuário</button>
+                    </div>
+                </form>
+            </div>
+
+            <div id="options-about-view" class="hidden">
+                <div style="text-align: center; padding: 20px;">
+                    <img src="logo.svg" alt="KodeWeb Logo" style="height: 64px; width: 64px; margin-bottom: 12px;">
+                    <h3>KodeWeb IDE</h3>
+                    <p style="margin-top: 10px; font-size: 13px; color: var(--text-muted);">
+                        <?= $app_version ?> - 2026 <a href="https://laralabs.dev" target="_blank" style="color: var(--accent); text-decoration: none;">Laralabs</a>
+                    </p>
+                    <p style="margin-top: 10px; font-size: 13px; color: var(--text-muted);">
+                        <a href="https://github.com/laraantunes/kodeweb" target="_blank" style="color: var(--accent); text-decoration: none;">https://github.com/laraantunes/kodeweb</a>
+                    </p>
+                    <div style="margin-top: 20px;">
                         <button class="btn btn-primary" id="btn-update-kodeweb" onclick="updateKodeWeb(this)">Atualizar Aplicação (via git)</button>
                     </div>
                 </div>
@@ -960,7 +1155,22 @@ if (file_exists($auth_file)) {
     </div>
 
     <!-- Link App Controller JS -->
-    <script src="app.js?v=<?= filemtime('app.js') ?>"></script>
+    <script src="app/api.js?v=<?= time() ?>"></script>
+    <script src="app/state.js?v=<?= time() ?>"></script>
+    <script src="app/editor.js?v=<?= time() ?>"></script>
+    <script src="app/layout.js?v=<?= time() ?>"></script>
+    <script src="app/init_status.js?v=<?= time() ?>"></script>
+    <script src="app/files.js?v=<?= time() ?>"></script>
+    <script src="app/tabs.js?v=<?= time() ?>"></script>
+    <script src="app/terminal.js?v=<?= time() ?>"></script>
+    <script src="app/database.js?v=<?= time() ?>"></script>
+    <script src="app/ftp.js?v=<?= time() ?>"></script>
+    <script src="app/git.js?v=<?= time() ?>"></script>
+    <script src="app/upload.js?v=<?= time() ?>"></script>
+    <script src="app/storage.js?v=<?= time() ?>"></script>
+    <script src="app/markdown.js?v=<?= time() ?>"></script>
+    <script src="app/modals.js?v=<?= time() ?>"></script>
+    <script src="app/init.js?v=<?= time() ?>"></script>
 </body>
 
 </html>
