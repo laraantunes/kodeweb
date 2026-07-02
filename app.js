@@ -1,3 +1,27 @@
+
+function getApiUrl(action) {
+    if (!action) return 'api.php';
+    const files = ['files_list', 'files_list_recursive', 'file_read', 'file_serve', 'file_save', 'file_create', 'file_upload', 'file_rename', 'file_delete'];
+    const db = ['db_connections_list', 'db_connection_save', 'db_connection_delete', 'db_query_execute', 'db_list_databases', 'db_list_tables', 'db_table_structure', 'db_column_add', 'db_column_delete', 'db_column_modify', 'db_row_insert', 'db_row_update', 'db_row_delete'];
+    const ftp = ['ftp_connections_list', 'ftp_connection_save', 'ftp_connection_delete', 'ftp_test', 'ftp_list', 'ftp_file_read', 'ftp_file_save', 'ftp_transfer_batch_local', 'ftp_transfer_local', 'ftp_transfer_batch_remote', 'ftp_transfer_remote', 'ftp_list_recursive', 'ftp_mkdir', 'ftp_delete', 'ftp_rename', 'ftp_file_upload'];
+    const terminal = ['terminal_cmd'];
+    const ssh = ['ssh_connections_list', 'ssh_connection_save', 'ssh_connection_delete', 'ssh_test_connection', 'ssh_terminal_cmd'];
+    const user = ['update_user'];
+    const git = ['git_repos', 'git_status', 'git_diff', 'git_action'];
+    const kodeweb = ['status', 'update_kodeweb', 'update_env'];
+
+    if (files.includes(action)) return 'api/files.php';
+    if (db.includes(action)) return 'api/db.php';
+    if (ftp.includes(action)) return 'api/ftp.php';
+    if (terminal.includes(action)) return 'api/terminal.php';
+    if (ssh.includes(action)) return 'api/ssh.php';
+    if (user.includes(action)) return 'api/user.php';
+    if (git.includes(action)) return 'api/git.php';
+    if (kodeweb.includes(action)) return 'api/kodeweb.php';
+    
+    return 'api.php';
+}
+
 // app.js - Client-side logic for KodeWeb IDE
 
 // Application State
@@ -254,7 +278,7 @@ function togglePanel(panelId, resizerId, button) {
 // 4. Fetch status on initialization
 async function fetchSystemStatus() {
     try {
-        const response = await fetch('api.php?action=status');
+        const response = await fetch(getApiUrl('status') + '?action=status');
         const data = await response.json();
         if (data.success) {
             state.workspaceRoot = data.workspace_root;
@@ -307,7 +331,7 @@ function populateDbDrivers(drivers) {
 // 5. File Tree Operations
 async function loadFiles(path = '', container = document.getElementById('file-tree-root')) {
     try {
-        const response = await fetch(`api.php?action=files_list&path=${encodeURIComponent(path)}`);
+        const response = await fetch(getApiUrl('files_list') + `?action=files_list&path=${encodeURIComponent(path)}`);
         const data = await response.json();
         if (!data.success) throw new Error(data.message);
         
@@ -577,10 +601,7 @@ async function openFile(path, name) {
             formData.append('path', path);
         }
         
-        const response = await fetch('api.php', {
-            method: 'POST',
-            body: formData
-        });
+        const response = await fetch(getApiUrl(formData.get('action')), { method: 'POST', body: formData });
         const data = await response.json();
         if (!data.success) throw new Error(data.message);
         
@@ -766,7 +787,7 @@ function activateTab(path) {
             if (tabInfo.isLocal) {
                 imgEl.src = tabInfo.localDataUrl;
             } else {
-                imgEl.src = `api.php?action=file_serve&path=${encodeURIComponent(path)}&_t=${new Date().getTime()}`;
+                imgEl.src = getApiUrl('file_serve') + `?action=file_serve&path=${encodeURIComponent(path)}&_t=${new Date().getTime()}`;
             }
             imgContainer.classList.remove('hidden');
         } else if (tabInfo && tabInfo.isPdf) {
@@ -778,7 +799,7 @@ function activateTab(path) {
             if (tabInfo.isLocal) {
                 pdfEl.src = tabInfo.localDataUrl;
             } else {
-                pdfEl.src = `api.php?action=file_serve&path=${encodeURIComponent(path)}&_t=${new Date().getTime()}`;
+                pdfEl.src = getApiUrl('file_serve') + `?action=file_serve&path=${encodeURIComponent(path)}&_t=${new Date().getTime()}`;
             }
             pdfContainer.classList.remove('hidden');
         } else if (tabInfo) {
@@ -923,10 +944,7 @@ async function saveActiveFile() {
     formData.append('content', content);
     
     try {
-        const response = await fetch('api.php', {
-            method: 'POST',
-            body: formData
-        });
+        const response = await fetch(getApiUrl(formData.get('action')), { method: 'POST', body: formData });
         const data = await response.json();
         
         if (data.success) {
@@ -1074,7 +1092,7 @@ async function executeTerminalCommand(cmd, termId = null) {
     formData.append('terminal_id', termId);
     
     try {
-        const response = await fetch('api.php', { method: 'POST', body: formData });
+        const response = await fetch(getApiUrl(formData.get('action')), { method: 'POST', body: formData });
         const data = await response.json();
         
         if (data.success) {
@@ -1094,7 +1112,7 @@ async function executeTerminalCommand(cmd, termId = null) {
 // 8. Database Dashboard Operations
 async function loadDbConnections() {
     try {
-        const response = await fetch('api.php?action=db_connections_list');
+        const response = await fetch(getApiUrl('db_connections_list') + '?action=db_connections_list');
         const data = await response.json();
         
         if (data.success) {
@@ -1144,7 +1162,7 @@ async function loadDbConnectionsModalList() {
     
     listDiv.innerHTML = '<li style="color:var(--text-muted); font-size:12px; text-align:center; padding:15px;">Carregando conexões...</li>';
     try {
-        const response = await fetch('api.php?action=db_connections_list');
+        const response = await fetch(getApiUrl('db_connections_list') + '?action=db_connections_list');
         const data = await response.json();
         
         if (data.success) {
@@ -1267,10 +1285,7 @@ window.deleteDbConnection = function(id, e) {
         formData.append('id', id);
         
         try {
-            const response = await fetch('api.php', {
-                method: 'POST',
-                body: formData
-            });
+            const response = await fetch(getApiUrl(formData.get('action')), { method: 'POST', body: formData });
             const data = await response.json();
             if (data.success) {
                 if (state.activeConnectionId === id) {
@@ -1317,10 +1332,7 @@ async function saveDbConnection(e) {
     formData.append('database', database);
     
     try {
-        const response = await fetch('api.php', {
-            method: 'POST',
-            body: formData
-        });
+        const response = await fetch(getApiUrl(formData.get('action')), { method: 'POST', body: formData });
         const data = await response.json();
         
         if (data.success) {
@@ -1354,10 +1366,7 @@ async function executeSqlQuery() {
     formData.append('sql', sql);
     
     try {
-        const response = await fetch('api.php', {
-            method: 'POST',
-            body: formData
-        });
+        const response = await fetch(getApiUrl(formData.get('action')), { method: 'POST', body: formData });
         const data = await response.json();
         
         resultsContainer.innerHTML = '';
@@ -1716,10 +1725,7 @@ async function submitNewNode(e) {
     formData.append('name', name);
     
     try {
-        const response = await fetch('api.php', {
-            method: 'POST',
-            body: formData
-        });
+        const response = await fetch(getApiUrl(formData.get('action')), { method: 'POST', body: formData });
         const data = await response.json();
         
         if (data.success) {
@@ -1763,10 +1769,7 @@ async function renameNode(path, newName) {
     formData.append('new_name', newName);
     
     try {
-        const response = await fetch('api.php', {
-            method: 'POST',
-            body: formData
-        });
+        const response = await fetch(getApiUrl(formData.get('action')), { method: 'POST', body: formData });
         const data = await response.json();
         
         if (data.success) {
@@ -1817,10 +1820,7 @@ async function deleteNode(path) {
     formData.append('path', path);
     
     try {
-        const response = await fetch('api.php', {
-            method: 'POST',
-            body: formData
-        });
+        const response = await fetch(getApiUrl(formData.get('action')), { method: 'POST', body: formData });
         const data = await response.json();
         
         if (data.success) {
@@ -1928,7 +1928,7 @@ async function toggleGlobalSearchModal() {
     
     try {
         if (!state.allFiles) {
-            const response = await fetch('api.php?action=files_list_recursive');
+            const response = await fetch(getApiUrl('files_list_recursive') + '?action=files_list_recursive');
             const data = await response.json();
             if (data.success) {
                 state.allFiles = data.files;
@@ -2072,7 +2072,7 @@ async function syncDbExplorerConnections() {
     const currentValue = select.value;
     
     try {
-        const response = await fetch('api.php?action=db_connections_list');
+        const response = await fetch(getApiUrl('db_connections_list') + '?action=db_connections_list');
         const data = await response.json();
         
         if (data.success) {
@@ -2110,7 +2110,7 @@ async function loadDbExplorerTree(connId) {
     root.innerHTML = '<li style="color: var(--text-muted); font-size:12px; text-align:center; padding-top:20px;">Carregando bancos de dados...</li>';
     
     try {
-        const response = await fetch(`api.php?action=db_list_databases&connection_id=${connId}`);
+        const response = await fetch(getApiUrl('db_list_databases') + `?action=db_list_databases&connection_id=${connId}`);
         const data = await response.json();
         
         if (data.success) {
@@ -2182,7 +2182,7 @@ async function toggleExplorerDatabaseNode(row, subUl, connId) {
         subUl.innerHTML = '<li style="color: var(--text-muted); font-size:11px; padding: 4px 20px;">Carregando tabelas...</li>';
         
         try {
-            const response = await fetch(`api.php?action=db_list_tables&connection_id=${connId}&database=${encodeURIComponent(dbName)}`);
+            const response = await fetch(getApiUrl('db_list_tables') + `?action=db_list_tables&connection_id=${connId}&database=${encodeURIComponent(dbName)}`);
             const data = await response.json();
             
             if (data.success) {
@@ -2342,10 +2342,7 @@ async function fetchTableData() {
     formData.append('sql', paginatedQuery);
     
     try {
-        const response = await fetch('api.php', {
-            method: 'POST',
-            body: formData
-        });
+        const response = await fetch(getApiUrl(formData.get('action')), { method: 'POST', body: formData });
         const data = await response.json();
         
         if (data.success) {
@@ -2430,11 +2427,7 @@ async function executeCustomDbQuery() {
     btnCancel.style.display = 'inline-block';
     
     try {
-        const response = await fetch('api.php', { 
-            method: 'POST', 
-            body: formData,
-            signal: state.dbExplorer.customQueryAbortController.signal
-        });
+        const response = await fetch(getApiUrl(formData.get('action')), { method: 'POST', body: formData, signal: state.dbExplorer.customQueryAbortController.signal });
         const data = await response.json();
         
         if (data.success) {
@@ -2586,7 +2579,7 @@ async function fetchTableStructure() {
     body.innerHTML = '<tr><td colspan="7" style="text-align:center; color:var(--text-muted); padding:20px;">Carregando estrutura...</td></tr>';
     
     try {
-        const response = await fetch(`api.php?action=db_table_structure&connection_id=${connId}&database=${encodeURIComponent(state.dbExplorer.selectedDb)}&table=${encodeURIComponent(state.dbExplorer.selectedTable)}`);
+        const response = await fetch(getApiUrl('db_table_structure') + `?action=db_table_structure&connection_id=${connId}&database=${encodeURIComponent(state.dbExplorer.selectedDb)}&table=${encodeURIComponent(state.dbExplorer.selectedTable)}`);
         const data = await response.json();
         
         if (data.success) {
@@ -2694,10 +2687,7 @@ window.saveDbRowInline = async function(rowIndex, btn) {
     formData.append('values', JSON.stringify(newValuesObj));
     
     try {
-        const response = await fetch('api.php', {
-            method: 'POST',
-            body: formData
-        });
+        const response = await fetch(getApiUrl(formData.get('action')), { method: 'POST', body: formData });
         const data = await response.json();
         
         if (data.success) {
@@ -2742,10 +2732,7 @@ window.deleteDbRow = function(rowIndex) {
         formData.append('keys', JSON.stringify(keysObj));
         
         try {
-            const response = await fetch('api.php', {
-                method: 'POST',
-                body: formData
-            });
+            const response = await fetch(getApiUrl(formData.get('action')), { method: 'POST', body: formData });
             const data = await response.json();
             
             if (data.success) {
@@ -2815,10 +2802,7 @@ async function saveDbRowSubmit(e) {
     formData.append('values', JSON.stringify(valuesObj));
     
     try {
-        const response = await fetch('api.php', {
-            method: 'POST',
-            body: formData
-        });
+        const response = await fetch(getApiUrl(formData.get('action')), { method: 'POST', body: formData });
         const data = await response.json();
         
         if (data.success) {
@@ -3066,7 +3050,7 @@ function uploadFile(file, targetDir) {
         progressBar.style.backgroundColor = 'var(--accent-error)';
     });
     
-    xhr.open('POST', 'api.php', true);
+    xhr.open('POST', getApiUrl(formData.get('action')), true);
     xhr.send(formData);
 }
 // Columns (Structure) Logic
@@ -3108,10 +3092,7 @@ window.deleteDbColumn = function(colName) {
         formData.append('column_name', colName);
         
         try {
-            const response = await fetch('api.php', {
-                method: 'POST',
-                body: formData
-            });
+            const response = await fetch(getApiUrl(formData.get('action')), { method: 'POST', body: formData });
             const data = await response.json();
             
             if (data.success) {
@@ -3159,10 +3140,7 @@ async function saveDbColumnSubmit(e) {
     formData.append('default_value', defaultValue);
     
     try {
-        const response = await fetch('api.php', {
-            method: 'POST',
-            body: formData
-        });
+        const response = await fetch(getApiUrl(formData.get('action')), { method: 'POST', body: formData });
         const data = await response.json();
         
         if (data.success) {
@@ -3438,7 +3416,7 @@ async function loadFtpConnections() {
     try {
         const formData = new FormData();
         formData.append("action", "ftp_connections_list");
-        const res = await fetch("api.php", { method: "POST", body: formData });
+        const res = await fetch(getApiUrl(formData.get('action')), { method: 'POST', body: formData });
         const data = await res.json();
         
         if (!data.success) throw new Error(data.message || "Erro");
@@ -3492,7 +3470,7 @@ async function saveFtpConnection() {
     formData.append("password", password);
     
     try {
-        const res = await fetch("api.php", { method: "POST", body: formData });
+        const res = await fetch(getApiUrl(formData.get('action')), { method: 'POST', body: formData });
         const data = await res.json();
         
         if (data.success) {
@@ -3529,7 +3507,7 @@ async function testFtpConnection() {
     formData.append("password", password);
     
     try {
-        const res = await fetch("api.php", { method: "POST", body: formData });
+        const res = await fetch(getApiUrl(formData.get('action')), { method: 'POST', body: formData });
         const data = await res.json();
         if (data.success) {
             showToast("Conexão FTP estabelecida com sucesso!", "success");
@@ -3548,7 +3526,7 @@ async function deleteFtpConnection(id) {
         formData.append("id", id);
         
         try {
-            const res = await fetch("api.php", { method: "POST", body: formData });
+            const res = await fetch(getApiUrl(formData.get('action')), { method: 'POST', body: formData });
             const data = await res.json();
             if (data.success) {
                 showToast("Excluído.", "success");
@@ -3594,7 +3572,7 @@ async function loadFtpTree(connId, path, parentElement) {
         formData.append("connection_id", connId);
         formData.append("path", path);
         
-        const res = await fetch("api.php", { method: "POST", body: formData });
+        const res = await fetch(getApiUrl(formData.get('action')), { method: 'POST', body: formData });
         const data = await res.json();
         
         if (!data.success) throw new Error(data.message);
@@ -3772,7 +3750,7 @@ function showFtpContextMenu(e, connId, path, name, isDir) {
                 formData.append("old_path", path);
                 formData.append("new_path", newPath);
                 
-                fetch("api.php", { method: "POST", body: formData })
+                fetch(getApiUrl(formData.get('action')), { method: 'POST', body: formData })
                 .then(r => r.json())
                 .then(data => {
                     if (data.success) {
@@ -3793,7 +3771,7 @@ function showFtpContextMenu(e, connId, path, name, isDir) {
             formData.append("path", path);
             formData.append("is_dir", isDir);
             
-            fetch("api.php", { method: "POST", body: formData })
+            fetch(getApiUrl(formData.get('action')), { method: 'POST', body: formData })
             .then(r => r.json())
             .then(data => {
                 if (data.success) {
@@ -3863,7 +3841,7 @@ function ftpNewFile(connId, basePath) {
             formData.append("path", targetPath);
             formData.append("content", "");
             
-            fetch("api.php", { method: "POST", body: formData })
+            fetch(getApiUrl(formData.get('action')), { method: 'POST', body: formData })
             .then(r => r.json())
             .then(data => {
                 if (data.success) {
@@ -3884,7 +3862,7 @@ function ftpNewFolder(connId, basePath) {
             formData.append("connection_id", connId);
             formData.append("path", targetPath);
             
-            fetch("api.php", { method: "POST", body: formData })
+            fetch(getApiUrl(formData.get('action')), { method: 'POST', body: formData })
             .then(r => r.json())
             .then(data => {
                 if (data.success) {
@@ -3904,7 +3882,7 @@ async function ftpOpenFile(connId, path, name) {
     formData.append("path", path);
     
     try {
-        const res = await fetch("api.php", { method: "POST", body: formData });
+        const res = await fetch(getApiUrl(formData.get('action')), { method: 'POST', body: formData });
         const data = await res.json();
         
         if (data.success) {
@@ -3933,7 +3911,7 @@ async function transferLocalToFtp(localPathStr, connId, targetDir) {
         formData.append("action", "files_list_recursive");
         formData.append("dir", localPathStr);
         
-        const res = await fetch("api.php", { method: "POST", body: formData });
+        const res = await fetch(getApiUrl(formData.get('action')), { method: 'POST', body: formData });
         const data = await res.json();
         
         if (!data.success) throw new Error(data.message);
@@ -3992,7 +3970,7 @@ async function transferLocalToFtp(localPathStr, connId, targetDir) {
             tfData.append("files", JSON.stringify(batchPayload));
             
             try {
-                const trRes = await fetch("api.php", { method: "POST", body: tfData });
+                const trRes = await fetch(getApiUrl(tfData.get('action')), { method: 'POST', body: tfData });
                 const trData = await trRes.json();
                 if (trData.success && trData.results) {
                     for (const result of trData.results) {
@@ -4034,7 +4012,7 @@ async function uploadFilesToFtp(files, connId, targetDir) {
     }
     
     showToast("Enviando arquivos...", "info");
-    fetch("api.php", { method: "POST", body: formData })
+    fetch(getApiUrl(formData.get('action')), { method: 'POST', body: formData })
     .then(r => r.json())
     .then(data => {
         if (data.success) {
@@ -4064,7 +4042,7 @@ async function transferFtpToLocal(ftpPathStr, targetDir) {
         formData.append("connection_id", connId);
         formData.append("path", ftpPath);
         
-        const res = await fetch("api.php", { method: "POST", body: formData });
+        const res = await fetch(getApiUrl(formData.get('action')), { method: 'POST', body: formData });
         const data = await res.json();
         
         if (!data.success) throw new Error(data.message);
@@ -4129,7 +4107,7 @@ async function transferFtpToLocal(ftpPathStr, targetDir) {
             tfData.append("files", JSON.stringify(batchPayload));
             
             try {
-                const trRes = await fetch("api.php", { method: "POST", body: tfData });
+                const trRes = await fetch(getApiUrl(tfData.get('action')), { method: 'POST', body: tfData });
                 const trData = await trRes.json();
                 if (trData.success && trData.results) {
                     for (const result of trData.results) {
@@ -4467,7 +4445,7 @@ async function loadSshConnections() {
     try {
         const formData = new FormData();
         formData.append("action", "ssh_connections_list");
-        const res = await fetch("api.php", { method: "POST", body: formData });
+        const res = await fetch(getApiUrl(formData.get('action')), { method: 'POST', body: formData });
         const data = await res.json();
         
         if (!data.success) throw new Error(data.message || "Erro");
@@ -4526,7 +4504,7 @@ async function saveSshConnection() {
     formData.append("password", password);
     
     try {
-        const res = await fetch("api.php", { method: "POST", body: formData });
+        const res = await fetch(getApiUrl(formData.get('action')), { method: 'POST', body: formData });
         const data = await res.json();
         
         if (data.success) {
@@ -4566,7 +4544,7 @@ window.testSshConnection = async function() {
     btn.disabled = true;
     
     try {
-        const res = await fetch("api.php", { method: "POST", body: formData });
+        const res = await fetch(getApiUrl(formData.get('action')), { method: 'POST', body: formData });
         const data = await res.json();
         if (data.success) {
             showToast(data.message, "success");
@@ -4588,7 +4566,7 @@ window.deleteSshConnection = function(id) {
         formData.append("id", id);
         
         try {
-            const res = await fetch("api.php", { method: "POST", body: formData });
+            const res = await fetch(getApiUrl(formData.get('action')), { method: 'POST', body: formData });
             const data = await res.json();
             if (data.success) {
                 showToast("Conexão removida.", "success");
@@ -4634,10 +4612,7 @@ async function saveOptionsEnv(event) {
         formData.append('action', 'update_env');
         formData.append('local_env', isLocal);
         
-        const response = await fetch('api.php', {
-            method: 'POST',
-            body: formData
-        });
+        const response = await fetch(getApiUrl(formData.get('action')), { method: 'POST', body: formData });
         
         const data = await response.json();
         if (data.success) {
@@ -4668,10 +4643,7 @@ async function saveOptionsUser(event) {
         formData.append('username', username);
         formData.append('password', password);
         
-        const response = await fetch('api.php', {
-            method: 'POST',
-            body: formData
-        });
+        const response = await fetch(getApiUrl(formData.get('action')), { method: 'POST', body: formData });
         
         const data = await response.json();
         if (data.success) {
@@ -4757,7 +4729,7 @@ document.addEventListener('DOMContentLoaded', () => {
 
 async function loadGitRepositories() {
     try {
-        const res = await fetch('api.php?action=git_repos');
+        const res = await fetch(getApiUrl('git_repos') + '?action=git_repos');
         const data = await res.json();
         if (data.success) {
             const select = document.getElementById('git-repo-select');
@@ -4796,7 +4768,7 @@ async function loadGitStatus(repoPath) {
         formData.append('action', 'git_status');
         formData.append('repo', repoPath);
         
-        const res = await fetch('api.php', { method: 'POST', body: formData });
+        const res = await fetch(getApiUrl(formData.get('action')), { method: 'POST', body: formData });
         const data = await res.json();
         
         if (data.success) {
@@ -4912,7 +4884,7 @@ async function openGitDiff(repoPath, file) {
         formData.append('repo', repoPath);
         formData.append('file', file);
         
-        const res = await fetch('api.php', { method: 'POST', body: formData });
+        const res = await fetch(getApiUrl(formData.get('action')), { method: 'POST', body: formData });
         const data = await res.json();
         
         if (data.success) {
@@ -4957,7 +4929,7 @@ async function executeGitAction(repoPath, action, file = null, message = null) {
         if (file) formData.append('file', file);
         if (message) formData.append('message', message);
         
-        const res = await fetch('api.php', { method: 'POST', body: formData });
+        const res = await fetch(getApiUrl(formData.get('action')), { method: 'POST', body: formData });
         const data = await res.json();
         
         if (data.success) {
@@ -5004,10 +4976,7 @@ async function saveOptionsEnv(event) {
         formData.append('action', 'update_env');
         formData.append('local_env', isLocal);
         
-        const response = await fetch('api.php', {
-            method: 'POST',
-            body: formData
-        });
+        const response = await fetch(getApiUrl(formData.get('action')), { method: 'POST', body: formData });
         
         const data = await response.json();
         if (data.success) {
@@ -5038,10 +5007,7 @@ async function saveOptionsUser(event) {
         formData.append('username', username);
         formData.append('password', password);
         
-        const response = await fetch('api.php', {
-            method: 'POST',
-            body: formData
-        });
+        const response = await fetch(getApiUrl(formData.get('action')), { method: 'POST', body: formData });
         
         const data = await response.json();
         if (data.success) {
@@ -5063,7 +5029,7 @@ function updateKodeWeb(btn) {
         btn.disabled = true;
         
         try {
-            const response = await fetch('api.php?action=update_kodeweb');
+            const response = await fetch(getApiUrl('update_kodeweb') + '?action=update_kodeweb');
             const data = await response.json();
             
             if (data.success) {
