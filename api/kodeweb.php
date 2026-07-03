@@ -51,6 +51,61 @@ try {
             }
             break;
 
+        case 'get_plugins':
+            $plugins_dir = $rootDir . '/plugins';
+            $user_settings_file = $rootDir . '/data/user-settings.yaml';
+            $plugins = [];
+            $active_folders = [];
+            
+            if (file_exists($user_settings_file) && class_exists('Symfony\Component\Yaml\Yaml')) {
+                try {
+                    $user_settings = \Symfony\Component\Yaml\Yaml::parseFile($user_settings_file) ?: [];
+                    $active_folders = $user_settings['plugins']['active'] ?? [];
+                } catch (Exception $e) {}
+            }
+
+            if (is_dir($plugins_dir)) {
+                foreach (scandir($plugins_dir) as $folder) {
+                    if ($folder === '.' || $folder === '..') continue;
+                    $yaml_file = $plugins_dir . '/' . $folder . '/plugin.yaml';
+                    if (file_exists($yaml_file) && class_exists('Symfony\Component\Yaml\Yaml')) {
+                        try {
+                            $plugin_data = \Symfony\Component\Yaml\Yaml::parseFile($yaml_file);
+                            $plugins[] = [
+                                'folder' => $folder,
+                                'name' => $plugin_data['name'] ?? $folder,
+                                'description' => $plugin_data['description'] ?? '',
+                                'version' => $plugin_data['version'] ?? '',
+                                'creator' => $plugin_data['creator'] ?? '',
+                                'active' => in_array($folder, $active_folders)
+                            ];
+                        } catch (Exception $e) {}
+                    }
+                }
+            }
+            echo json_encode(['success' => true, 'plugins' => $plugins]);
+            break;
+
+        case 'save_plugins':
+            $active_plugins = json_decode($_POST['active_plugins'] ?? '[]', true);
+            $user_settings_file = $rootDir . '/data/user-settings.yaml';
+            $user_settings = [];
+            
+            if (file_exists($user_settings_file) && class_exists('Symfony\Component\Yaml\Yaml')) {
+                try {
+                    $user_settings = \Symfony\Component\Yaml\Yaml::parseFile($user_settings_file) ?: [];
+                } catch (Exception $e) {}
+            }
+            
+            if (!isset($user_settings['plugins'])) $user_settings['plugins'] = [];
+            $user_settings['plugins']['active'] = $active_plugins;
+            
+            if (class_exists('Symfony\Component\Yaml\Yaml')) {
+                file_put_contents($user_settings_file, \Symfony\Component\Yaml\Yaml::dump($user_settings, 4, 2));
+            }
+            echo json_encode(['success' => true]);
+            break;
+
         case 'status':
             $auth_file = $rootDir . '/data/auth.enc';
             $username = '';

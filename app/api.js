@@ -8,7 +8,7 @@ function getApiUrl(action) {
     const ssh = ['ssh_connections_list', 'ssh_connection_save', 'ssh_connection_delete', 'ssh_test_connection', 'ssh_terminal_cmd'];
     const user = ['update_user'];
     const git = ['git_repos', 'git_status', 'git_diff', 'git_action'];
-    const kodeweb = ['status', 'update_kodeweb', 'update_env'];
+    const kodeweb = ['status', 'update_kodeweb', 'update_env', 'get_plugins', 'save_plugins'];
 
     if (files.includes(action)) return 'api/files.php';
     if (db.includes(action)) return 'api/db.php';

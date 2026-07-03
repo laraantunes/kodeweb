@@ -7,6 +7,7 @@
             <button class="db-tab-btn active" id="options-tab-conn-btn" onclick="switchOptionsTab('conn')" style="border-radius: 4px;">Conexões</button>
             <button class="db-tab-btn" id="options-tab-env-btn" onclick="switchOptionsTab('env')" style="border-radius: 4px;">Ambiente</button>
             <button class="db-tab-btn" id="options-tab-user-btn" onclick="switchOptionsTab('user')" style="border-radius: 4px;">Usuário</button>
+            <button class="db-tab-btn" id="options-tab-plugins-btn" onclick="switchOptionsTab('plugins')" style="border-radius: 4px;">Plugins</button>
             <button class="db-tab-btn" id="options-tab-about-btn" onclick="switchOptionsTab('about')" style="border-radius: 4px;">Sobre</button>
         </div>
         
@@ -37,6 +38,20 @@
         </div>
 
         <div id="options-user-view" class="hidden">
+            <div style="margin-bottom: 20px; border-bottom: 1px solid var(--border-color); padding-bottom: 15px;">
+                <p style="margin-bottom: 10px; font-size: 13px; color: var(--text-muted);">Configurações avançadas do usuário:</p>
+                <?php
+                $kodeWebRoot = dirname(dirname(__DIR__));
+                $workspacePath = dirname($kodeWebRoot);
+                if (isset($env['WORKSPACE_PATH']) && trim($env['WORKSPACE_PATH']) !== '') {
+                    $workspacePath = trim($env['WORKSPACE_PATH']);
+                }
+                $workspaceRoot = realpath($workspacePath) ?: $workspacePath;
+                $relPath = ltrim(str_replace($workspaceRoot, '', $kodeWebRoot), '/\\') . '/data/user-settings.yaml';
+                $relPath = str_replace('\\', '/', $relPath);
+                ?>
+                <button type="button" class="btn" onclick="openFile('<?= htmlspecialchars($relPath) ?>'); closeModal('modal-options');">⚙️ Abrir Configurações (user-settings.yaml)</button>
+            </div>
             <form id="form-options-user" onsubmit="saveOptionsUser(event)">
                 <div class="form-group">
                     <label class="form-label" for="options-username">Usuário</label>
@@ -50,6 +65,16 @@
                     <button type="submit" class="btn btn-primary">Salvar Usuário</button>
                 </div>
             </form>
+        </div>
+
+        <div id="options-plugins-view" class="hidden">
+            <h4 style="margin-bottom: 15px; color: var(--text-primary);">Gerenciador de Plugins</h4>
+            <div id="options-plugins-list" style="display: flex; flex-direction: column; gap: 10px; max-height: 400px; overflow-y: auto;">
+                <div style="text-align: center; color: var(--text-muted); padding: 20px;">Carregando plugins...</div>
+            </div>
+            <div class="form-actions" style="margin-top: 20px;">
+                <button class="btn btn-primary" onclick="savePluginsConfig()">Salvar Plugins</button>
+            </div>
         </div>
 
         <div id="options-about-view" class="hidden">

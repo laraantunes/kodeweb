@@ -302,7 +302,7 @@ function openOptionsModal() {
 }
 
 function switchOptionsTab(tab) {
-    const tabs = ['conn', 'env', 'user', 'about'];
+    const tabs = ['conn', 'env', 'user', 'plugins', 'about'];
     tabs.forEach(t => {
         const btn = document.getElementById(`options-tab-${t}-btn`);
         const view = document.getElementById(`options-${t}-view`);
@@ -310,6 +310,7 @@ function switchOptionsTab(tab) {
         if (view) {
             if (t === tab) {
                 view.classList.remove('hidden');
+                if (tab === 'plugins') loadPluginsConfig();
             } else {
                 view.classList.add('hidden');
             }
@@ -398,7 +399,71 @@ function updateKodeWeb(btn) {
         } catch (err) {
             showToast("Erro de rede ao atualizar a aplicação.", "error");
             btn.innerText = originalText;
-            btn.disabled = false;
         }
     });
+}
+
+async function loadPluginsConfig() {
+    const listEl = document.getElementById('options-plugins-list');
+    if (!listEl) return;
+    listEl.innerHTML = '<div style="text-align: center; color: var(--text-muted); padding: 20px;">Carregando plugins...</div>';
+    
+    try {
+        const formData = new FormData();
+        formData.append('action', 'get_plugins');
+        const res = await fetch(getApiUrl('get_plugins'), { method: 'POST', body: formData });
+        const data = await res.json();
+        
+        if (data.success) {
+            listEl.innerHTML = '';
+            if (data.plugins.length === 0) {
+                listEl.innerHTML = '<div style="text-align: center; color: var(--text-muted); padding: 20px;">Nenhum plugin encontrado.</div>';
+                return;
+            }
+            
+            data.plugins.forEach(p => {
+                const item = document.createElement('div');
+                item.style.cssText = 'display: flex; justify-content: space-between; align-items: center; padding: 10px; border: 1px solid var(--border-color); border-radius: 4px; background: var(--bg-secondary);';
+                
+                const info = document.createElement('div');
+                info.innerHTML = `<div style="font-weight: bold; color: var(--text-primary); margin-bottom: 4px;">${p.name} <span style="font-size: 11px; color: var(--text-muted); font-weight: normal;">v${p.version} por ${p.creator}</span></div>
+                                  <div style="font-size: 12px; color: var(--text-muted);">${p.description}</div>`;
+                
+                const toggle = document.createElement('div');
+                toggle.innerHTML = `<input type="checkbox" class="plugin-toggle" data-folder="${p.folder}" id="plugin-${p.folder}" ${p.active ? 'checked' : ''} style="width: 16px; height: 16px; cursor: pointer;">`;
+                
+                item.appendChild(info);
+                item.appendChild(toggle);
+                listEl.appendChild(item);
+            });
+        }
+    } catch (e) {
+        listEl.innerHTML = '<div style="text-align: center; color: var(--accent-danger); padding: 20px;">Erro ao carregar plugins.</div>';
+    }
+}
+
+async function savePluginsConfig() {
+    const checkboxes = document.querySelectorAll('.plugin-toggle');
+    const active = [];
+    checkboxes.forEach(cb => {
+        if (cb.checked) active.push(cb.getAttribute('data-folder'));
+    });
+    
+    try {
+        const formData = new FormData();
+        formData.append('action', 'save_plugins');
+        formData.append('active_plugins', JSON.stringify(active));
+        
+        const res = await fetch(getApiUrl('save_plugins'), { method: 'POST', body: formData });
+        const data = await res.json();
+        
+        if (data.success) {
+            showToast("Plugins salvos com sucesso. Recarregando...", "success");
+            setTimeout(() => window.location.reload(), 1500);
+        } else {
+            showToast("Erro ao salvar plugins.", "error");
+        }
+    } catch (e) {
+        showToast("Erro de rede.", "error");
+    }
 }

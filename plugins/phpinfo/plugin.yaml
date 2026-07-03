@@ -1,6 +1,7 @@
 name: "PHP Info"
 description: "Exibe as configurações do servidor PHP."
 version: "1.0.0"
+creator: Laralabs
 css:
   - css/phpinfo.css
 js:

@@ -24,9 +24,23 @@ if (file_exists($auth_file)) {
 // Plugin Loader
 $plugins_dir = __DIR__ . '/plugins';
 $active_plugins = [];
+
+$user_settings_file = __DIR__ . '/data/user-settings.yaml';
+$active_plugin_folders = [];
+if (file_exists($user_settings_file) && class_exists('Symfony\Component\Yaml\Yaml')) {
+    try {
+        $user_settings = Yaml::parseFile($user_settings_file) ?: [];
+        $active_plugin_folders = $user_settings['plugins']['active'] ?? [];
+    } catch (Exception $e) {}
+}
+
 if (is_dir($plugins_dir)) {
     foreach (scandir($plugins_dir) as $plugin_folder) {
         if ($plugin_folder === '.' || $plugin_folder === '..') continue;
+        
+        // Only load if active in user settings
+        if (!in_array($plugin_folder, $active_plugin_folders)) continue;
+        
         $yaml_file = $plugins_dir . '/' . $plugin_folder . '/plugin.yaml';
         if (file_exists($yaml_file) && class_exists('Symfony\Component\Yaml\Yaml')) {
             try {

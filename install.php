@@ -26,6 +26,13 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
         // Create data/.htaccess for protection
         file_put_contents($data_dir . '/.htaccess', "Require all denied\nDeny from all");
 
+        // Create initial user-settings.yaml if it doesn't exist
+        $user_settings_file = $data_dir . '/user-settings.yaml';
+        if (!file_exists($user_settings_file)) {
+            $default_settings = "# Configurações do Usuário\n# Adicione suas configurações personalizadas aqui.\n";
+            file_put_contents($user_settings_file, $default_settings);
+        }
+
         // Hash the password
         $hash = password_hash($password, PASSWORD_DEFAULT);
         $auth_data = json_encode(['username' => $username, 'password' => $hash]);

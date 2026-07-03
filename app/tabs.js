@@ -12,7 +12,7 @@ async function openFile(path, name) {
     if (!state.openingFiles) state.openingFiles = new Set();
     state.openingFiles.add(path);
 
-    
+    if (!name) name = path.split('/').pop().split('\\').pop();
     const ext = name.split('.').pop().toLowerCase();
     const isImage = ['png', 'jpg', 'jpeg', 'gif', 'svg', 'webp', 'ico', 'bmp'].includes(ext);
     const isPdf = ext === 'pdf';
