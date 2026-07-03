@@ -363,7 +363,7 @@ async function saveOptionsUser(event) {
 }
 
 function updateKodeWeb(btn) {
-    showConfirm("Tem certeza que deseja atualizar a aplicação? Isso executará 'git pull origin main'.", async () => {
+    showConfirm("Deseja baixar e instalar a versão mais recente do GitHub?", async () => {
         const originalText = btn.innerText;
         btn.innerText = "Atualizando...";
         btn.disabled = true;
@@ -373,7 +373,7 @@ function updateKodeWeb(btn) {
             const data = await response.json();
             
             if (data.success) {
-                showToast("Aplicação atualizada com sucesso! Recarregando...", "success");
+                showToast(data.message || "Aplicação atualizada com sucesso! Recarregando...", "success");
                 setTimeout(() => window.location.reload(), 1500);
             } else {
                 showToast("Erro ao atualizar: " + (data.message || data.error), "error");

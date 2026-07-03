@@ -17,12 +17,13 @@ async function openFile(path, name) {
     const isImage = ['png', 'jpg', 'jpeg', 'gif', 'svg', 'webp', 'ico', 'bmp'].includes(ext);
     const isPdf = ext === 'pdf';
     
-    if (isImage || isPdf) {
+    if (isImage || isPdf || path.startsWith('plugin_')) {
         state.openTabs[path] = {
             path: path,
             name: name,
             isImage: isImage,
             isPdf: isPdf,
+            isVirtual: path.startsWith('plugin_'),
             isDirty: false
         };
         createTabUI(path, name);
@@ -266,6 +267,20 @@ function activateTab(path) {
         }
     }
     
+    if (path && path.startsWith('plugin_')) {
+        document.getElementById('no-file-placeholder').classList.add('hidden');
+        document.getElementById('editor').classList.add('hidden');
+        if(document.getElementById('image-preview-container')) document.getElementById('image-preview-container').classList.add('hidden');
+        if(document.getElementById('pdf-preview-container')) document.getElementById('pdf-preview-container').classList.add('hidden');
+        document.getElementById('db-explorer-container').classList.add('hidden');
+        if(document.getElementById('ftp-explorer-container')) document.getElementById('ftp-explorer-container').classList.add('hidden');
+        if(document.getElementById('git-explorer-container')) document.getElementById('git-explorer-container').classList.add('hidden');
+        
+        document.querySelectorAll('.plugin-container').forEach(el => el.classList.add('hidden'));
+        const pluginContainer = document.getElementById(path + '-container');
+        if (pluginContainer) pluginContainer.classList.remove('hidden');
+    }
+    
     // Markdown Preview Toggle Logic
     const mdBtn = document.getElementById('md-toggle-btn');
     const isMarkdown = tabInfo && tabInfo.name && (tabInfo.name.endsWith('.md') || tabInfo.name.endsWith('.markdown'));
@@ -339,6 +354,7 @@ function proceedCloseTab(path) {
             document.getElementById('db-explorer-container').classList.add('hidden');
             if(document.getElementById('ftp-explorer-container')) document.getElementById('ftp-explorer-container').classList.add('hidden');
             if(document.getElementById('git-explorer-container')) document.getElementById('git-explorer-container').classList.add('hidden');
+            document.querySelectorAll('.plugin-container').forEach(el => el.classList.add('hidden'));
             updateBreadcrumb('');
         }
     }

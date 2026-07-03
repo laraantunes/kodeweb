@@ -1,0 +1,7 @@
+name: "PHP Info"
+description: "Exibe as configurações do servidor PHP."
+version: "1.0.0"
+css:
+  - css/phpinfo.css
+js:
+  - js/phpinfo.js

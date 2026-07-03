@@ -3,6 +3,9 @@
 .env
 data/
 
+# Composer dependencies
+vendor/
+
 # Encrypted Database Connection Profiles
 connections/*.enc
 

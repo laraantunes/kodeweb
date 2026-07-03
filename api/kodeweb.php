@@ -4,18 +4,50 @@ require_once __DIR__ . '/base.php';
 try {
     switch ($action) {
         case 'update_kodeweb':
-            $output = [];
-            $return_var = 0;
-            $cwd = getcwd();
-            // Change directory to kodeweb root
-            chdir($rootDir);
-            exec('git pull origin main 2>&1', $output, $return_var);
-            chdir($cwd);
+            $context = stream_context_create([
+                'http' => [
+                    'method' => 'GET',
+                    'header' => [
+                        'User-Agent: KodeWeb-Updater'
+                    ]
+                ]
+            ]);
             
-            if ($return_var === 0) {
-                echo json_encode(['success' => true, 'output' => implode("\n", $output)]);
+            $apiResponse = file_get_contents('https://api.github.com/repos/laraantunes/kodeweb/releases/latest', false, $context);
+            if (!$apiResponse) {
+                throw new Exception("Falha ao buscar a última versão no GitHub.");
+            }
+            $releaseData = json_decode($apiResponse, true);
+            $assets = $releaseData['assets'] ?? [];
+            
+            $zipUrl = '';
+            foreach ($assets as $asset) {
+                if (strpos($asset['name'], 'kodeweb-release.zip') !== false) {
+                    $zipUrl = $asset['browser_download_url'];
+                    break;
+                }
+            }
+            
+            if (empty($zipUrl)) {
+                throw new Exception("Nenhum arquivo de build (.zip) encontrado na última versão.");
+            }
+            
+            $tempZip = $rootDir . '/data/kodeweb-release-temp.zip';
+            $zipContent = file_get_contents($zipUrl, false, $context);
+            if (!$zipContent) {
+                throw new Exception("Falha ao baixar o arquivo da versão.");
+            }
+            file_put_contents($tempZip, $zipContent);
+            
+            $zip = new ZipArchive;
+            if ($zip->open($tempZip) === TRUE) {
+                $zip->extractTo($rootDir);
+                $zip->close();
+                unlink($tempZip);
+                echo json_encode(['success' => true, 'message' => 'Aplicação atualizada para a ' . $releaseData['tag_name']]);
             } else {
-                echo json_encode(['success' => false, 'error' => "Falha ao executar o git pull.", 'output' => implode("\n", $output)]);
+                if (file_exists($tempZip)) unlink($tempZip);
+                throw new Exception("Falha ao extrair o arquivo .zip da atualização.");
             }
             break;
 

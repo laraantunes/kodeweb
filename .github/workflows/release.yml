@@ -1,0 +1,42 @@
+name: Build and Release KodeWeb
+
+on:
+  release:
+    types: [published]
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Setup PHP
+        uses: shivammathur/setup-php@v2
+        with:
+          php-version: '8.2'
+          extensions: mbstring, pdo, xml
+
+      - name: Install Dependencies
+        run: composer install --no-dev --optimize-autoloader
+
+      - name: Clean up dev and unneeded files
+        run: |
+          rm -rf .git
+          rm -rf .github
+          rm -f .gitignore
+          rm -f composer.json
+          rm -f composer.lock
+
+      - name: Create ZIP archive
+        run: zip -r kodeweb-release.zip .
+
+      - name: Upload Release Asset
+        uses: actions/upload-release-asset@v1
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        with:
+          upload_url: ${{ github.event.release.upload_url }}
+          asset_path: ./kodeweb-release.zip
+          asset_name: kodeweb-release.zip
+          asset_content_type: application/zip

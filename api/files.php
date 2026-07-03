@@ -44,10 +44,17 @@ try {
 
         case 'file_read':
             $relativePath = $_POST['path'] ?? $_GET['path'] ?? '';
+            
+            // Ignore virtual tabs
+            if ($relativePath === 'db_explorer' || $relativePath === 'git_explorer' || strpos($relativePath, 'ftp_explorer_') === 0 || strpos($relativePath, 'plugin_') === 0) {
+                echo json_encode(['success' => true, 'content' => '']);
+                break;
+            }
+            
             $absPath = get_absolute_path($relativePath);
             
             if (!file_exists($absPath) || is_dir($absPath)) {
-                throw new Exception("Arquivo não encontrado.");
+                throw new Exception("Arquivo não encontrado: " . htmlspecialchars($relativePath));
             }
             
             $content = file_get_contents($absPath);
