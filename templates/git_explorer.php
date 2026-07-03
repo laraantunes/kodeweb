@@ -5,7 +5,7 @@
             <span style="font-size: 20px;">🌿</span> Git Integrado
         </h3>
         <div style="display: flex; gap: 8px;">
-            <button class="btn btn-sm btn-primary" id="git-refresh-btn" data-tooltip="Atualizar Status">🔄 Atualizar</button>
+            <button class="btn btn-sm btn-primary" id="git-refresh-btn" title="Atualizar Status">🔄 Atualizar</button>
         </div>
     </div>
     
@@ -24,14 +24,20 @@
         <div style="flex: 1; display: flex; flex-direction: column; gap: 15px; border-right: 1px solid var(--border-color); padding-right: 20px;">
             
             <div style="flex: 1; display: flex; flex-direction: column; min-height: 0;">
-                <h4 style="margin: 0 0 10px 0; font-size: 14px;">Staged Changes (A commitar)</h4>
+                <div style="display: flex; justify-content: space-between; align-items: center; margin: 0 0 10px 0;">
+                    <h4 style="margin: 0; font-size: 14px;">Staged Changes (A commitar)</h4>
+                    <button class="btn btn-sm" id="git-unstage-all-btn" title="Remover todos do Stage" style="font-size:10px; padding:2px 6px;">➖ Todos</button>
+                </div>
                 <div id="git-staged-files" style="flex: 1; border: 1px solid var(--border-color); border-radius: 4px; background: var(--bg-secondary); overflow-y: auto; padding: 5px;">
                     <!-- Staged files here -->
                 </div>
             </div>
 
             <div style="flex: 1; display: flex; flex-direction: column; min-height: 0;">
-                <h4 style="margin: 0 0 10px 0; font-size: 14px;">Unstaged Changes</h4>
+                <div style="display: flex; justify-content: space-between; align-items: center; margin: 0 0 10px 0;">
+                    <h4 style="margin: 0; font-size: 14px;">Unstaged Changes</h4>
+                    <button class="btn btn-sm btn-primary" id="git-stage-all-btn" title="Adicionar todos ao Stage" style="font-size:10px; padding:2px 6px;">➕ Todos</button>
+                </div>
                 <div id="git-unstaged-files" style="flex: 1; border: 1px solid var(--border-color); border-radius: 4px; background: var(--bg-secondary); overflow-y: auto; padding: 5px;">
                     <!-- Unstaged files here -->
                 </div>

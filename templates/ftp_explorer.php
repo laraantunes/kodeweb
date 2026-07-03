@@ -5,9 +5,9 @@
             <span style="font-size: 20px;">🌐</span> Conexão FTP
         </h3>
         <div style="display: flex; gap: 8px;">
-            <button class="btn btn-sm btn-primary" id="ftp-new-file-btn" data-tooltip="Novo Arquivo">📄+</button>
-            <button class="btn btn-sm btn-primary" id="ftp-new-folder-btn" data-tooltip="Nova Pasta">📁+</button>
-            <button class="btn btn-sm" id="ftp-refresh-btn" data-tooltip="Atualizar">🔄</button>
+            <button class="btn btn-sm btn-primary" id="ftp-new-file-btn" title="Novo Arquivo">📄+</button>
+            <button class="btn btn-sm btn-primary" id="ftp-new-folder-btn" title="Nova Pasta">📁+</button>
+            <button class="btn btn-sm" id="ftp-refresh-btn" title="Atualizar">🔄</button>
         </div>
     </div>
     

@@ -5,6 +5,13 @@ async function fetchSystemStatus() {
         const data = await response.json();
         if (data.success) {
             state.workspaceRoot = data.workspace_root;
+            
+            const workspaceDisplay = document.getElementById('workspace-path-display');
+            if (workspaceDisplay) {
+                workspaceDisplay.textContent = data.workspace_root;
+                workspaceDisplay.title = data.workspace_root;
+            }
+            
             // Populate database driver options
             populateDbDrivers(data.pdo_drivers);
             
@@ -12,6 +19,21 @@ async function fetchSystemStatus() {
             const envCheckbox = document.getElementById('options-env-local');
             if (envCheckbox) {
                 envCheckbox.checked = data.local_env;
+            }
+            
+            const workspaceInput = document.getElementById('options-env-workspace');
+            if (workspaceInput && data.workspace_path !== undefined) {
+                workspaceInput.value = data.workspace_path;
+            }
+            
+            const datalist = document.getElementById('workspace-history-list');
+            if (datalist && data.workspace_history) {
+                datalist.innerHTML = '';
+                data.workspace_history.forEach(path => {
+                    const option = document.createElement('option');
+                    option.value = path;
+                    datalist.appendChild(option);
+                });
             }
             
             if (data.username) {

@@ -5,8 +5,8 @@
         <div class="db-explorer-sidebar-header">
             <span>Navegador DB</span>
             <div style="display: flex; gap: 8px;">
-                <button class="action-icon-btn" id="db-explorer-custom-query-btn" data-tooltip="Nova Consulta SQL">📝</button>
-                <button class="action-icon-btn" id="db-explorer-refresh-btn" data-tooltip="Recarregar Estrutura">🔄</button>
+                <button class="action-icon-btn" id="db-explorer-custom-query-btn" title="Nova Consulta SQL">📝</button>
+                <button class="action-icon-btn" id="db-explorer-refresh-btn" title="Recarregar Estrutura">🔄</button>
             </div>
         </div>
         <div class="db-explorer-connection-select-container">

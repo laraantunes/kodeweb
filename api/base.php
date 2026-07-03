@@ -9,8 +9,12 @@ require_once $rootDir . '/config.php';
 require_once $rootDir . '/encryption.php';
 require_once $rootDir . '/vendor/autoload.php';
 
-// Define the root workspace path (parent of kodeweb directory)
-define('WORKSPACE_ROOT', realpath(dirname($rootDir)));
+// Define the root workspace path (parent of kodeweb directory or custom)
+$workspace_path = dirname($rootDir);
+if (isset($env['WORKSPACE_PATH']) && trim($env['WORKSPACE_PATH']) !== '') {
+    $workspace_path = trim($env['WORKSPACE_PATH']);
+}
+define('WORKSPACE_ROOT', realpath($workspace_path) ?: $workspace_path);
 
 // Helper function to resolve relative paths safely within the workspace
 function get_absolute_path($relativePath) {

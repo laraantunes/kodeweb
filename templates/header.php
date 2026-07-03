@@ -14,23 +14,23 @@
 
     <!-- Toggle buttons on the right -->
     <div class="panel-toggles">
-        <button class="toggle-btn active tooltip-right" id="toggle-left-btn" data-tooltip="Exibir/Ocultar Explorer">
+        <button class="toggle-btn active tooltip-right" id="toggle-left-btn" title="Exibir/Ocultar Explorer">
             <span>📁</span> Arquivos
         </button>
         <button class="toggle-btn active tooltip-right" id="toggle-bottom-btn"
-            data-tooltip="Exibir/Ocultar Terminal">
+            title="Exibir/Ocultar Terminal">
             <span>🖥️</span> Terminal
         </button>
-        <button class="toggle-btn active tooltip-right" id="toggle-right-btn" data-tooltip="Exibir/Ocultar Banco de Dados">
+        <button class="toggle-btn active tooltip-right" id="toggle-right-btn" title="Exibir/Ocultar Banco de Dados">
             <span>🔌</span> Banco de Dados
         </button>
-        <button class="toggle-btn tooltip-right" id="ftp-connections-btn" data-tooltip="Gerenciador FTP">
+        <button class="toggle-btn tooltip-right" id="ftp-connections-btn" title="Gerenciador FTP">
             <span>🌐</span> FTP
         </button>
-        <button class="toggle-btn tooltip-right" id="git-btn" data-tooltip="Git Integrado">
+        <button class="toggle-btn tooltip-right" id="git-btn" title="Git Integrado">
             <span>🌿</span> Git
         </button>
-        <button class="toggle-btn tooltip-right" id="help-btn" data-tooltip="Atalhos e Ajuda">
+        <button class="toggle-btn tooltip-right" id="help-btn" title="Atalhos e Ajuda">
             <span>❓</span> Ajuda
         </button>
         <button class="toggle-btn" id="options-btn" onclick="openOptionsModal()" style="margin-left: 10px; color: var(--text-primary); border-color: var(--border-color);">

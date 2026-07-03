@@ -8,8 +8,8 @@
             </div>
         </div>
         <div style="display: flex; gap: 4px; flex-shrink: 0; margin-left: 10px;">
-            <button class="btn btn-sm tooltip-left" id="btn-add-terminal" data-tooltip="Novo Terminal Local" style="padding: 2px 6px; font-size:10px;">+ Aba</button>
-            <button class="btn btn-sm tooltip-left" id="btn-add-ssh-terminal" data-tooltip="Nova Conexão SSH" style="padding: 2px 6px; font-size:10px; background-color: #2c2538; border-color: var(--accent);">+ SSH</button>
+            <button class="btn btn-sm tooltip-left" id="btn-add-terminal" title="Novo Terminal Local" style="padding: 2px 6px; font-size:10px;">+ Aba</button>
+            <button class="btn btn-sm tooltip-left" id="btn-add-ssh-terminal" title="Nova Conexão SSH" style="padding: 2px 6px; font-size:10px; background-color: #2c2538; border-color: var(--accent);">+ SSH</button>
         </div>
     </div>
     <div class="terminal-input-row">

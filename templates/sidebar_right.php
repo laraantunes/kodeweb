@@ -3,9 +3,9 @@
     <div class="sidebar-header">
         <span>Banco de Dados</span>
         <div style="display: flex; gap: 4px;">
-            <button class="btn btn-sm tooltip-right" id="btn-explore-db" data-tooltip="Explorar Banco (Nova Aba)"
+            <button class="btn btn-sm tooltip-right" id="btn-explore-db" title="Explorar Banco (Nova Aba)"
                 style="padding: 2px 6px; font-size:10px; background-color: var(--bg-hover);">🔍 Explorar</button>
-            <button class="btn btn-sm btn-primary tooltip-right" id="btn-add-db" data-tooltip="Nova Conexão"
+            <button class="btn btn-sm btn-primary tooltip-right" id="btn-add-db" title="Nova Conexão"
                 style="padding: 2px 6px; font-size:10px;">+ Conexão</button>
         </div>
     </div>

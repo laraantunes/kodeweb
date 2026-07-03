@@ -46,6 +46,16 @@ document.addEventListener('DOMContentLoaded', () => {
         if (repo) loadGitStatus(repo);
     });
     
+    if (document.getElementById('git-stage-all-btn')) document.getElementById('git-stage-all-btn').addEventListener('click', () => {
+        const repo = document.getElementById('git-repo-select').value;
+        if (repo) executeGitAction(repo, 'stage', '.');
+    });
+    
+    if (document.getElementById('git-unstage-all-btn')) document.getElementById('git-unstage-all-btn').addEventListener('click', () => {
+        const repo = document.getElementById('git-repo-select').value;
+        if (repo) executeGitAction(repo, 'unstage', '.');
+    });
+    
     if (document.getElementById('git-commit-btn')) document.getElementById('git-commit-btn').addEventListener('click', async () => {
         const repo = document.getElementById('git-repo-select').value;
         const msg = document.getElementById('git-commit-msg').value;
@@ -315,6 +325,7 @@ async function saveOptionsEnv(event) {
         const formData = new FormData();
         formData.append('action', 'update_env');
         formData.append('local_env', isLocal);
+        formData.append('workspace_path', document.getElementById('options-env-workspace').value);
         
         const response = await fetch(getApiUrl(formData.get('action')), { method: 'POST', body: formData });
         

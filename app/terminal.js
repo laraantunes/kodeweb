@@ -585,6 +585,7 @@ async function saveOptionsEnv(event) {
         const formData = new FormData();
         formData.append('action', 'update_env');
         formData.append('local_env', isLocal);
+        formData.append('workspace_path', document.getElementById('options-env-workspace').value);
         
         const response = await fetch(getApiUrl(formData.get('action')), { method: 'POST', body: formData });
         
