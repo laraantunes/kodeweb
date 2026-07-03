@@ -445,6 +445,7 @@ async function loadSshConnections() {
                 </div>
                 <div class="db-conn-actions">
                     <button class="action-icon-btn" onclick="openSshTerminal('${conn.id}', '${escapeHTML(conn.name)}')">🖥️ Conectar</button>
+                    <button class="action-icon-btn" onclick="if(typeof openSshInteractiveTerminal === 'function') openSshInteractiveTerminal('${conn.id}', '${escapeHTML(conn.name)}')">💻 Interativo</button>
                     <button class="action-icon-btn danger" onclick="deleteSshConnection('${conn.id}')">❌</button>
                 </div>
             `;

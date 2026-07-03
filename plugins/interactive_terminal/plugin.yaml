@@ -1,0 +1,8 @@
+name: Terminal Interativo
+description: Fornece um terminal local e remoto (SSH) interativo utilizando WebSocket e Xterm.js.
+version: 1.0.0
+creator: Laralabs
+js:
+  - js/terminal.js
+
+#Nota para usuários Windows: Necessário executar "iterm-server.bat" (presente na raiz do KodeWeb) e manter seu terminal aberto.

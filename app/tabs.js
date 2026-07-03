@@ -257,6 +257,8 @@ function activateTab(path) {
         } else if (tabInfo) {
             if(imgContainer) imgContainer.classList.add('hidden');
             if(pdfContainer) pdfContainer.classList.add('hidden');
+            document.querySelectorAll('.plugin-container').forEach(el => el.classList.add('hidden'));
+            
             // Swap Ace session
             state.editor.setSession(tabInfo.session);
             state.editor.focus();
@@ -456,6 +458,17 @@ function updateBreadcrumb(path) {
     if (!path) {
         breadcrumb.textContent = 'Nenhum arquivo aberto';
         return;
+    }
+
+    if (path.startsWith('plugin_')) {
+        const tabInfo = state.openTabs[path];
+        if (tabInfo && tabInfo.name) {
+            const item = document.createElement('span');
+            item.className = 'breadcrumb-item';
+            item.textContent = tabInfo.name;
+            breadcrumb.appendChild(item);
+            return;
+        }
     }
     
     const parts = path.split(/[\/\\]/);
