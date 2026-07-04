@@ -143,7 +143,17 @@
         setTimeout(() => {
             const host = window.location.hostname || '127.0.0.1';
             const wsProtocol = window.location.protocol === 'https:' ? 'wss' : 'ws';
-            socket = new WebSocket(`${wsProtocol}://${host}:8080`);
+            
+            let wsUrl = `${wsProtocol}://${host}:8080`;
+            
+            // Em ambiente HTTPS (geralmente produção), usamos um proxy reverso para contornar firewalls e usar SSL
+            if (window.location.protocol === 'https:') {
+                let pathname = window.location.pathname.replace(/\/[^\/]*$/, ''); // Pega o diretório atual
+                if (pathname === '/') pathname = '';
+                wsUrl = `${wsProtocol}://${window.location.host}${pathname}/ws-terminal`;
+            }
+
+            socket = new WebSocket(wsUrl);
 
             socket.onopen = () => {
                 isConnected = true;
