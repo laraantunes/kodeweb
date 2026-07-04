@@ -144,7 +144,12 @@ class TerminalServer implements MessageComponentInterface {
                         $loop->addReadStream($pipes[2], function ($pipe) use ($from) {
                             $out = fread($pipe, 8192);
                             if ($out !== false && $out !== '') {
-                                $from->send(json_encode(['type' => 'output', 'data' => mb_convert_encoding($out, 'UTF-8', 'ISO-8859-1')], JSON_INVALID_UTF8_SUBSTITUTE));
+                                // Ignorar os warnings de Job Control do Bash no inicio da sessão
+                                $out = preg_replace('/bash: cannot set terminal process group \(\d+\): Inappropriate ioctl for device\r?\n?/', '', $out);
+                                $out = preg_replace('/bash: no job control in this shell\r?\n?/', '', $out);
+                                if ($out !== '') {
+                                    $from->send(json_encode(['type' => 'output', 'data' => mb_convert_encoding($out, 'UTF-8', 'ISO-8859-1')], JSON_INVALID_UTF8_SUBSTITUTE));
+                                }
                             }
                         });
                     }
@@ -284,7 +289,7 @@ class TerminalServer implements MessageComponentInterface {
     }
 }
 
-$port = 28421;
+$port = 28422;
 $server = IoServer::factory(
     new HttpServer(
         new WsServer(

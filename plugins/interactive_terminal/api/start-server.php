@@ -1,7 +1,7 @@
 <?php
 header('Content-Type: application/json');
 
-$port = 28421;
+$port = 28422;
 $host = '127.0.0.1';
 
 // Check if port is open
@@ -57,10 +57,4 @@ if ($is_win) {
 // Give it a moment to start
 usleep(500000); // 0.5s
 
-echo json_encode([
-    'success' => true, 
-    'message' => 'Tentativa de iniciar finalizada.',
-    'pid' => isset($pid) ? trim($pid) : null,
-    'php_bin' => $php_bin,
-    'cmd' => isset($cmd) ? $cmd : null
-]);
+echo json_encode(['success' => true, 'message' => 'Servidor iniciado.']);

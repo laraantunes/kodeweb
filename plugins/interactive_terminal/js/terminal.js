@@ -129,12 +129,6 @@
             const res = await fetch('plugins/interactive_terminal/api/start-server.php');
             const data = await res.json();
             
-            if (terminal) {
-                terminal.writeln(`\r\n\x1b[36m[DEBUG PHP] CMD: ${data.cmd}\x1b[0m`);
-                terminal.writeln(`\x1b[36m[DEBUG PHP] PID: ${data.pid}\x1b[0m`);
-                terminal.writeln(`\x1b[36m[DEBUG PHP] BIN: ${data.php_bin}\x1b[0m`);
-            }
-            
             if (!data.success) {
                 document.getElementById('xterm-status').innerText = 'Falha no Servidor';
                 document.getElementById('xterm-status').style.color = 'var(--accent-danger)';
@@ -159,7 +153,7 @@
             const host = window.location.hostname || '127.0.0.1';
             const wsProtocol = window.location.protocol === 'https:' ? 'wss' : 'ws';
             
-            let wsUrl = `${wsProtocol}://${host}:28421`;
+            let wsUrl = `${wsProtocol}://${host}:28422`;
             
             // Em ambiente HTTPS (geralmente produção), usamos um proxy reverso para contornar firewalls e usar SSL
             if (window.location.protocol === 'https:') {
