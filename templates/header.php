@@ -14,6 +14,12 @@
 
     <!-- Toggle buttons on the right -->
     <div class="panel-toggles">
+        <span id="global-loading" style="display: none; margin-right: 15px; color: var(--accent); font-size: 13px; font-weight: 500;">
+            <svg viewBox="0 0 50 50" style="width: 16px; height: 16px; vertical-align: middle; animation: spin 1s linear infinite;">
+                <circle cx="25" cy="25" r="20" fill="none" stroke-width="5" stroke="currentColor" style="stroke-linecap: round; stroke-dasharray: 90, 150; stroke-dashoffset: 0; animation: dash 1.5s ease-in-out infinite;"></circle>
+            </svg>
+            <span style="vertical-align: middle; margin-left: 5px;">Processando...</span>
+        </span>
         <button class="toggle-btn active tooltip-right" id="toggle-left-btn" title="Exibir/Ocultar Explorer">
             <span>📁</span> Arquivos
         </button>

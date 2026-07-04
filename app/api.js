@@ -1,3 +1,22 @@
+// Global loading indicator state
+window.activeRequests = 0;
+const originalFetch = window.fetch;
+window.fetch = async function(...args) {
+    window.activeRequests++;
+    const loader = document.getElementById('global-loading');
+    if(loader) loader.style.display = 'inline-block';
+    
+    try {
+        const response = await originalFetch.apply(this, args);
+        return response;
+    } finally {
+        window.activeRequests--;
+        if(window.activeRequests <= 0) {
+            window.activeRequests = 0;
+            if(loader) loader.style.display = 'none';
+        }
+    }
+};
 
 function getApiUrl(action) {
     if (!action) return 'api.php';
