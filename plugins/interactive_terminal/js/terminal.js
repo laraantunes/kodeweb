@@ -127,7 +127,15 @@
         try {
             // Chama a API PHP para iniciar o servidor (se já não estiver rodando)
             const res = await fetch('plugins/interactive_terminal/api/start-server.php');
-            await res.json();
+            const data = await res.json();
+            if (!data.success) {
+                document.getElementById('xterm-status').innerText = 'Falha no Servidor';
+                document.getElementById('xterm-status').style.color = 'var(--accent-danger)';
+                if (terminal) {
+                    terminal.writeln(`\r\n\x1b[31mERRO: ${data.message}\x1b[0m`);
+                }
+                return;
+            }
         } catch (e) {
             console.error("Erro ao tentar iniciar o servidor:", e);
         }

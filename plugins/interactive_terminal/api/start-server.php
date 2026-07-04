@@ -28,13 +28,33 @@ if ($is_win) {
     $psCommand = "Start-Process -FilePath '" . $php_bin . "' -ArgumentList '-f', '" . $serverScript . "' -WindowStyle Hidden";
     pclose(popen('powershell.exe -WindowStyle Hidden -Command "' . $psCommand . '"', 'r'));
 } else {
-    // Linux auto-start background process with logging to find out why it's crashing
+    // Check if shell_exec is available
+    $disabled = explode(',', ini_get('disable_functions'));
+    $disabled = array_map('trim', $disabled);
+    
+    if (in_array('shell_exec', $disabled)) {
+        echo json_encode(['success' => false, 'message' => 'A hospedagem bloqueia a função shell_exec. O terminal interativo não pode ser iniciado.']);
+        exit;
+    }
+
     $logFile = dirname(__DIR__) . DIRECTORY_SEPARATOR . 'server_error.log';
-    $cmd = 'nohup ' . escapeshellarg($php_bin) . ' ' . escapeshellarg($serverScript) . ' > ' . escapeshellarg($logFile) . ' 2>&1 &';
-    shell_exec($cmd);
+    
+    // Check if we can write to the directory
+    if (!is_writable(dirname(__DIR__))) {
+        echo json_encode(['success' => false, 'message' => 'Sem permissão de escrita para gerar log.']);
+        exit;
+    }
+    
+    $cmd = 'nohup ' . escapeshellarg($php_bin) . ' ' . escapeshellarg($serverScript) . ' > ' . escapeshellarg($logFile) . ' 2>&1 & echo $!';
+    $pid = shell_exec($cmd);
+    
+    if (empty(trim($pid))) {
+        echo json_encode(['success' => false, 'message' => 'shell_exec rodou mas não conseguiu iniciar o processo em background. Verifique se nohup está disponível.']);
+        exit;
+    }
 }
 
 // Give it a moment to start
 usleep(500000); // 0.5s
 
-echo json_encode(['success' => true, 'message' => 'Server started.']);
+echo json_encode(['success' => true, 'message' => 'Server started attempt finished.']);
