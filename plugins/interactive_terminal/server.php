@@ -115,16 +115,16 @@ class TerminalServer implements MessageComponentInterface {
                 $cmd = 'bash';
                 
                 $descriptorspec = array(
-                   0 => array("pipe", "r"),
-                   1 => array("pipe", "w"),
-                   2 => array("pipe", "w")
+                   0 => array("pty"),
+                   1 => array("pty"),
+                   2 => array("pty")
                 );
                 
-                $process = proc_open($cmd, $descriptorspec, $pipes, $cwd, null, ['bypass_shell' => true]);
+                $process = @proc_open($cmd, $descriptorspec, $pipes, $cwd, null, ['bypass_shell' => true]);
                 
                 if (is_resource($process)) {
                     stream_set_blocking($pipes[1], false);
-                    stream_set_blocking($pipes[2], false);
+                    if (isset($pipes[2])) stream_set_blocking($pipes[2], false);
                     
                     $this->processes[$from->resourceId] = [
                         'process' => $process,
@@ -140,16 +140,28 @@ class TerminalServer implements MessageComponentInterface {
                         }
                     });
 
-                    $loop->addReadStream($pipes[2], function ($pipe) use ($from) {
-                        $out = fread($pipe, 8192);
-                        if ($out !== false && $out !== '') {
-                            $from->send(json_encode(['type' => 'output', 'data' => mb_convert_encoding($out, 'UTF-8', 'ISO-8859-1')], JSON_INVALID_UTF8_SUBSTITUTE));
-                        }
-                    });
+                    if (isset($pipes[2])) {
+                        $loop->addReadStream($pipes[2], function ($pipe) use ($from) {
+                            $out = fread($pipe, 8192);
+                            if ($out !== false && $out !== '') {
+                                $from->send(json_encode(['type' => 'output', 'data' => mb_convert_encoding($out, 'UTF-8', 'ISO-8859-1')], JSON_INVALID_UTF8_SUBSTITUTE));
+                            }
+                        });
+                    }
                     
-                    $from->send(json_encode(['type' => 'status', 'message' => 'Terminal iniciado.']));
+                    $from->send(json_encode(['type' => 'status', 'message' => 'Terminal PTY iniciado.']));
                 } else {
-                    $from->send(json_encode(['type' => 'error', 'message' => 'Falha ao iniciar o terminal.']));
+                    // Fallback to simulated terminal if PTY is not supported by hosting
+                    $this->processes[$from->resourceId] = [
+                        'is_simulated' => true,
+                        'is_linux' => true,
+                        'cwd' => $cwd,
+                        'buffer' => ''
+                    ];
+                    $prompt = "\r\n" . basename($cwd) . "$ ";
+                    $welcome = "Terminal Simulado (PTY indisponível no host)\r\n" . $prompt;
+                    $from->send(json_encode(['type' => 'output', 'data' => $welcome]));
+                    $from->send(json_encode(['type' => 'status', 'message' => 'Terminal Simulado iniciado.']));
                 }
             }
         } elseif (isset($data['type']) && $data['type'] === 'input') {
@@ -169,7 +181,9 @@ class TerminalServer implements MessageComponentInterface {
                     $cwd = $this->processes[$from->resourceId]['cwd'];
                     
                     if ($input === '') {
-                        $from->send(json_encode(['type' => 'output', 'data' => "\r\n$cwd> "]));
+                        $prompt = "\r\n";
+                        $prompt .= isset($this->processes[$from->resourceId]['is_linux']) ? basename($cwd) . "$ " : $cwd . "> ";
+                        $from->send(json_encode(['type' => 'output', 'data' => $prompt]));
                         return;
                     }
                     
@@ -187,20 +201,30 @@ class TerminalServer implements MessageComponentInterface {
                             $cwd = realpath($new_dir);
                         }
                         $this->processes[$from->resourceId]['cwd'] = $cwd;
-                        $from->send(json_encode(['type' => 'output', 'data' => "\r\n$cwd> "]));
+                        $prompt = "\r\n";
+                        $prompt .= isset($this->processes[$from->resourceId]['is_linux']) ? basename($cwd) . "$ " : $cwd . "> ";
+                        $from->send(json_encode(['type' => 'output', 'data' => $prompt]));
                         return;
                     }
                     
-                    // Execute with UTF-8 codepage forced
-                    $cmd = "chcp 65001 >nul && cd /d " . escapeshellarg($cwd) . " && " . $input . " 2>&1";
+                    // Execute command depending on OS
+                    if (isset($this->processes[$from->resourceId]['is_linux'])) {
+                        $cmd = "cd " . escapeshellarg($cwd) . " && " . $input . " 2>&1";
+                    } else {
+                        // Windows force UTF-8
+                        $cmd = "chcp 65001 >nul && cd /d " . escapeshellarg($cwd) . " && " . $input . " 2>&1";
+                    }
+                    
                     $out = shell_exec($cmd);
+                    if ($out === null) $out = '';
                     
                     // Normalize newlines to \r\n to prevent the staircase effect in xterm.js
                     $out = str_replace("\r\n", "\n", $out);
                     $out = str_replace("\n", "\r\n", $out);
                     
-                    $prompt = "\r\n$cwd> ";
-                    // Since we forced chcp 65001, the output is already UTF-8. 
+                    $prompt = "\r\n";
+                    $prompt .= isset($this->processes[$from->resourceId]['is_linux']) ? basename($cwd) . "$ " : $cwd . "> ";
+                    
                     // We just use 'UTF-8' as the source encoding to clean any invalid bytes.
                     $from->send(json_encode(['type' => 'output', 'data' => mb_convert_encoding($out . $prompt, 'UTF-8', 'UTF-8')], JSON_INVALID_UTF8_SUBSTITUTE));
                 } elseif ($char === "\x7f" || $char === "\x08") { // Backspace
@@ -260,7 +284,7 @@ class TerminalServer implements MessageComponentInterface {
     }
 }
 
-$port = 28420;
+$port = 28421;
 $server = IoServer::factory(
     new HttpServer(
         new WsServer(

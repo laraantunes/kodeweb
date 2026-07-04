@@ -1,7 +1,7 @@
 <?php
 header('Content-Type: application/json');
 
-$port = 28420;
+$port = 28421;
 $host = '127.0.0.1';
 
 // Check if port is open

@@ -18,5 +18,5 @@ Options -Indexes
     # Proxy reverso para o WebSocket (evita bloqueio da porta 8080 e resolve SSL)
     RewriteCond %{HTTP:Upgrade} websocket [NC]
     RewriteCond %{HTTP:Connection} upgrade [NC]
-    RewriteRule ^ws-terminal/?(.*) "ws://127.0.0.1:28420/$1" [P,L]
+    RewriteRule ^ws-terminal/?(.*) "ws://127.0.0.1:28421/$1" [P,L]
 </IfModule>
