@@ -260,7 +260,7 @@ class TerminalServer implements MessageComponentInterface {
     }
 }
 
-$port = 8080;
+$port = 28420;
 $server = IoServer::factory(
     new HttpServer(
         new WsServer(

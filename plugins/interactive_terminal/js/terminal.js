@@ -159,7 +159,7 @@
             const host = window.location.hostname || '127.0.0.1';
             const wsProtocol = window.location.protocol === 'https:' ? 'wss' : 'ws';
             
-            let wsUrl = `${wsProtocol}://${host}:8080`;
+            let wsUrl = `${wsProtocol}://${host}:28420`;
             
             // Em ambiente HTTPS (geralmente produção), usamos um proxy reverso para contornar firewalls e usar SSL
             if (window.location.protocol === 'https:') {
