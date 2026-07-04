@@ -185,6 +185,7 @@ function initEventListeners() {
     
     // Global shortcut listener (when editor is not focused)
     window.addEventListener('keydown', (e) => {
+        if (!e.key) return;
         const isW = e.key.toLowerCase() === 'w';
         const isCtrlW = (e.ctrlKey || e.metaKey) && isW;
         const isAltW = e.altKey && isW;

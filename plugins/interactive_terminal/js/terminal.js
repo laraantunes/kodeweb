@@ -142,7 +142,8 @@
         // Delay para garantir que o server iniciou
         setTimeout(() => {
             const host = window.location.hostname || '127.0.0.1';
-            socket = new WebSocket(`ws://${host}:8080`);
+            const wsProtocol = window.location.protocol === 'https:' ? 'wss' : 'ws';
+            socket = new WebSocket(`${wsProtocol}://${host}:8080`);
 
             socket.onopen = () => {
                 isConnected = true;
