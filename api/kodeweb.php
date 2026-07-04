@@ -4,19 +4,18 @@ require_once __DIR__ . '/base.php';
 try {
     switch ($action) {
         case 'update_kodeweb':
-            $context = stream_context_create([
-                'http' => [
-                    'method' => 'GET',
-                    'header' => [
-                        'User-Agent: KodeWeb-Updater'
-                    ]
-                ]
-            ]);
+            $ch = curl_init('https://api.github.com/repos/laraantunes/kodeweb/releases/latest');
+            curl_setopt($ch, CURLOPT_RETURNTRANSFER, true);
+            curl_setopt($ch, CURLOPT_USERAGENT, 'KodeWeb-Updater');
+            curl_setopt($ch, CURLOPT_TIMEOUT, 15);
+            $apiResponse = curl_exec($ch);
+            $httpCode = curl_getinfo($ch, CURLINFO_HTTP_CODE);
+            curl_close($ch);
             
-            $apiResponse = file_get_contents('https://api.github.com/repos/laraantunes/kodeweb/releases/latest', false, $context);
-            if (!$apiResponse) {
-                throw new Exception("Falha ao buscar a última versão no GitHub.");
+            if (!$apiResponse || $httpCode !== 200) {
+                throw new Exception("Falha ao buscar a última versão no GitHub. HTTP: $httpCode");
             }
+            
             $releaseData = json_decode($apiResponse, true);
             $assets = $releaseData['assets'] ?? [];
             
@@ -33,11 +32,23 @@ try {
             }
             
             $tempZip = $rootDir . '/data/kodeweb-release-temp.zip';
-            $zipContent = file_get_contents($zipUrl, false, $context);
-            if (!$zipContent) {
-                throw new Exception("Falha ao baixar o arquivo da versão.");
+            
+            // Usando cURL para baixar o ZIP
+            $ch = curl_init($zipUrl);
+            $fp = fopen($tempZip, 'w+');
+            curl_setopt($ch, CURLOPT_FILE, $fp);
+            curl_setopt($ch, CURLOPT_FOLLOWLOCATION, true);
+            curl_setopt($ch, CURLOPT_USERAGENT, 'KodeWeb-Updater');
+            curl_setopt($ch, CURLOPT_TIMEOUT, 60); // 60 segundos max para baixar
+            curl_exec($ch);
+            $curlError = curl_error($ch);
+            curl_close($ch);
+            fclose($fp);
+            
+            if ($curlError || filesize($tempZip) < 1024) {
+                if (file_exists($tempZip)) unlink($tempZip);
+                throw new Exception("Falha ao baixar o arquivo da versão. Erro: $curlError");
             }
-            file_put_contents($tempZip, $zipContent);
             
             $zip = new ZipArchive;
             if ($zip->open($tempZip) === TRUE) {
