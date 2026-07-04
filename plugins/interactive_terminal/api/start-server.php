@@ -57,4 +57,10 @@ if ($is_win) {
 // Give it a moment to start
 usleep(500000); // 0.5s
 
-echo json_encode(['success' => true, 'message' => 'Server started attempt finished.']);
+echo json_encode([
+    'success' => true, 
+    'message' => 'Tentativa de iniciar finalizada.',
+    'pid' => isset($pid) ? trim($pid) : null,
+    'php_bin' => $php_bin,
+    'cmd' => isset($cmd) ? $cmd : null
+]);

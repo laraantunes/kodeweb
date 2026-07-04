@@ -128,6 +128,13 @@
             // Chama a API PHP para iniciar o servidor (se já não estiver rodando)
             const res = await fetch('plugins/interactive_terminal/api/start-server.php');
             const data = await res.json();
+            
+            if (terminal) {
+                terminal.writeln(`\r\n\x1b[36m[DEBUG PHP] CMD: ${data.cmd}\x1b[0m`);
+                terminal.writeln(`\x1b[36m[DEBUG PHP] PID: ${data.pid}\x1b[0m`);
+                terminal.writeln(`\x1b[36m[DEBUG PHP] BIN: ${data.php_bin}\x1b[0m`);
+            }
+            
             if (!data.success) {
                 document.getElementById('xterm-status').innerText = 'Falha no Servidor';
                 document.getElementById('xterm-status').style.color = 'var(--accent-danger)';
