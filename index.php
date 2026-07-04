@@ -27,10 +27,13 @@ $active_plugins = [];
 
 $user_settings_file = __DIR__ . '/data/user-settings.yaml';
 $active_plugin_folders = [];
+$editor_theme = 'dracula'; // default
 if (file_exists($user_settings_file) && class_exists('Symfony\Component\Yaml\Yaml')) {
     try {
         $user_settings = Yaml::parseFile($user_settings_file) ?: [];
         $active_plugin_folders = $user_settings['plugins']['active'] ?? [];
+        $editor_theme = $user_settings['editor']['theme'] ?? 'dracula';
+        if ($editor_theme === 'darcula') $editor_theme = 'dracula'; // fix typo in older configs
     } catch (Exception $e) {}
 }
 

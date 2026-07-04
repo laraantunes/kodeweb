@@ -563,7 +563,7 @@ function openOptionsModal() {
 }
 
 function switchOptionsTab(tab) {
-    const tabs = ['conn', 'env', 'user', 'about'];
+    const tabs = ['conn', 'env', 'editor', 'user', 'plugins', 'about'];
     tabs.forEach(t => {
         const btn = document.getElementById(`options-tab-${t}-btn`);
         const view = document.getElementById(`options-${t}-view`);
@@ -576,6 +576,47 @@ function switchOptionsTab(tab) {
             }
         }
     });
+
+    if (tab === 'editor') {
+        const themeSelect = document.getElementById('options-editor-theme');
+        if (themeSelect && window.EDITOR_THEME) {
+            themeSelect.value = window.EDITOR_THEME;
+        }
+    }
+}
+
+async function saveOptionsEditor(event) {
+    event.preventDefault();
+    const theme = document.getElementById('options-editor-theme').value;
+    
+    try {
+        const formData = new FormData();
+        formData.append('action', 'save_editor_theme');
+        formData.append('theme', theme);
+        
+        const response = await fetch(getApiUrl('save_editor_theme'), { method: 'POST', body: formData });
+        
+        const data = await response.json();
+        if (data.success) {
+            window.EDITOR_THEME = theme;
+            
+            // Apply theme to active editor
+            if (state.editor) {
+                state.editor.setTheme("ace/theme/" + theme);
+            }
+            
+            // Apply theme to DB SQL textarea if ace is used there
+            if (state.dbExplorer && state.dbExplorer.customQueryEditor) {
+                state.dbExplorer.customQueryEditor.setTheme("ace/theme/" + theme);
+            }
+
+            showToast("Tema do editor atualizado com sucesso.", "success");
+        } else {
+            showToast("Erro: " + (data.message || data.error), "error");
+        }
+    } catch (err) {
+        showToast("Erro ao atualizar tema do editor.", "error");
+    }
 }
 
 async function saveOptionsEnv(event) {

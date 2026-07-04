@@ -117,6 +117,27 @@ try {
             echo json_encode(['success' => true]);
             break;
 
+        case 'save_editor_theme':
+            $theme = $_POST['theme'] ?? 'dracula';
+            if ($theme === 'darcula') $theme = 'dracula';
+            $user_settings_file = $rootDir . '/data/user-settings.yaml';
+            $user_settings = [];
+            
+            if (file_exists($user_settings_file) && class_exists('Symfony\Component\Yaml\Yaml')) {
+                try {
+                    $user_settings = \Symfony\Component\Yaml\Yaml::parseFile($user_settings_file) ?: [];
+                } catch (Exception $e) {}
+            }
+            
+            if (!isset($user_settings['editor'])) $user_settings['editor'] = [];
+            $user_settings['editor']['theme'] = $theme;
+            
+            if (class_exists('Symfony\Component\Yaml\Yaml')) {
+                file_put_contents($user_settings_file, \Symfony\Component\Yaml\Yaml::dump($user_settings, 4, 2));
+            }
+            echo json_encode(['success' => true]);
+            break;
+
         case 'status':
             $auth_file = $rootDir . '/data/auth.enc';
             $username = '';

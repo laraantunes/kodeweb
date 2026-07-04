@@ -956,7 +956,9 @@ function openCustomDbQueryView() {
     // Initialize Ace Editor if not yet
     if (!state.dbExplorer.customQueryEditor) {
         state.dbExplorer.customQueryEditor = ace.edit("db-custom-query-editor");
-        state.dbExplorer.customQueryEditor.setTheme("ace/theme/tomorrow_night_eighties");
+        let theme = window.EDITOR_THEME || "dracula";
+        if (theme === 'darcula') theme = 'dracula';
+        state.dbExplorer.customQueryEditor.setTheme("ace/theme/" + theme);
         state.dbExplorer.customQueryEditor.session.setMode("ace/mode/sql");
         state.dbExplorer.customQueryEditor.setOptions({
             fontSize: "14px",

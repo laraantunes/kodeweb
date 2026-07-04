@@ -1,7 +1,9 @@
 // 1. Initialize Ace Editor
 function initAceEditor() {
     state.editor = ace.edit("editor");
-    state.editor.setTheme("ace/theme/dracula");
+    let theme = window.EDITOR_THEME || "dracula";
+    if (theme === 'darcula') theme = 'dracula';
+    state.editor.setTheme("ace/theme/" + theme);
     state.editor.setOptions({
         fontSize: "14px",
         fontFamily: "'Fira Code', monospace",
