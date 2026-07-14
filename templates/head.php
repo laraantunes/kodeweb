@@ -5,6 +5,13 @@
     <!-- Favicon link -->
     <link rel="icon" type="image/svg+xml" href="logo.svg">
     <link rel="stylesheet" href="style.css">
+    
+    <!-- PWA configuration -->
+    <link rel="manifest" href="manifest.json">
+    <meta name="theme-color" content="#140523">
+    <meta name="apple-mobile-web-app-capable" content="yes">
+    <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+    <link rel="apple-touch-icon" href="logo.svg">
 
     <!-- Ace Editor Library from CDN -->
     <script src="https://cdnjs.cloudflare.com/ajax/libs/ace/1.32.7/ace.js" referrerpolicy="no-referrer"></script>

@@ -50,6 +50,13 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
     <title>KodeWeb - Login</title>
     <link rel="icon" type="image/svg+xml" href="logo.svg">
     <link rel="stylesheet" href="style.css">
+    
+    <!-- PWA configuration -->
+    <link rel="manifest" href="manifest.json">
+    <meta name="theme-color" content="#140523">
+    <meta name="apple-mobile-web-app-capable" content="yes">
+    <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+    <link rel="apple-touch-icon" href="logo.svg">
     <style>
         body {
             display: flex;
@@ -120,5 +127,13 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
         </form>
     </div>
 
+    <!-- Register Service Worker in login page -->
+    <script>
+        if ('serviceWorker' in navigator) {
+            navigator.serviceWorker.register('sw.js')
+                .then(reg => console.log('Service Worker registrado (login):', reg.scope))
+                .catch(err => console.error('Erro ao registrar Service Worker (login):', err));
+        }
+    </script>
 </body>
 </html>
