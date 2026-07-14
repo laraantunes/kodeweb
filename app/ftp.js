@@ -1,7 +1,7 @@
 // FTP Explorer & Modal Logic
 // ==========================================
 
-let activeFtpConnId = null;
+window.activeFtpConnId = null;
 
 function initFtpModal() {
     const btn = document.getElementById("ftp-connections-btn");
@@ -191,7 +191,7 @@ function openFtpExplorer(connId, name) {
     document.getElementById("ftp-explorer-container").classList.remove("hidden");
     document.getElementById("ftp-explorer-title").innerHTML = `<span style="font-size: 20px;">🌐</span> ${name}`;
     
-    activeFtpConnId = connId;
+    window.activeFtpConnId = connId;
     loadFtpTree(connId, "/", document.getElementById("ftp-tree-root"));
     initFtpDragAndDrop();
 }
@@ -444,23 +444,23 @@ function initFtpDragAndDrop() {
         e.preventDefault();
         e.stopPropagation();
         if (e.target === root || e.target.id === "ftp-drop-zone" || e.target.id === "ftp-tree-root") {
-            handleFtpDrop(e, activeFtpConnId, "/", null);
+            handleFtpDrop(e, window.activeFtpConnId, "/", null);
         }
     });
 }
 
 function initFtpToolbar() {
     document.getElementById('ftp-new-file-btn').addEventListener('click', () => {
-        if (!activeFtpConnId) return;
-        ftpNewFile(activeFtpConnId, "/");
+        if (!window.activeFtpConnId) return;
+        ftpNewFile(window.activeFtpConnId, "/");
     });
     document.getElementById('ftp-new-folder-btn').addEventListener('click', () => {
-        if (!activeFtpConnId) return;
-        ftpNewFolder(activeFtpConnId, "/");
+        if (!window.activeFtpConnId) return;
+        ftpNewFolder(window.activeFtpConnId, "/");
     });
     document.getElementById('ftp-refresh-btn').addEventListener('click', () => {
-        if (!activeFtpConnId) return;
-        loadFtpTree(activeFtpConnId, "/", document.getElementById("ftp-tree-root"));
+        if (!window.activeFtpConnId) return;
+        loadFtpTree(window.activeFtpConnId, "/", document.getElementById("ftp-tree-root"));
     });
 }
 
@@ -759,7 +759,7 @@ async function transferFtpToLocal(ftpPathStr, targetDir) {
         }
         
         showToast(`Transferência concluída: ${successCount} sucesso, ${errorCount} erros.`, successCount > 0 ? "success" : "error");
-        loadFileTree();
+        loadFiles();
         setTimeout(() => closeModal('modal-upload'), 2000);
         
     } catch (e) {

@@ -198,6 +198,17 @@ function activateTab(path) {
         
         // Show ftp explorer
         document.getElementById('ftp-explorer-container').classList.remove('hidden');
+
+        // Sync active connection and load its file tree
+        const connId = path.replace('ftp_explorer_', '');
+        const tabInfo = state.openTabs[path];
+        const connName = tabInfo ? tabInfo.name.replace('🛜 ', '') : 'Conexão FTP';
+        
+        window.activeFtpConnId = connId;
+        document.getElementById("ftp-explorer-title").innerHTML = `<span style="font-size: 20px;">🌐</span> ${connName}`;
+        if (typeof loadFtpTree === 'function') {
+            loadFtpTree(connId, "/", document.getElementById("ftp-tree-root"));
+        }
     } else if (path === 'git_explorer') {
         // Hide others, show git
         document.getElementById('no-file-placeholder').classList.add('hidden');
