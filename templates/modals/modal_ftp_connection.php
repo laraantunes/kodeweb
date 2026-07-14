@@ -5,7 +5,7 @@
         
         <div class="db-table-tabs" style="margin-bottom: 15px; justify-content: flex-start; gap: 10px;">
             <button class="db-tab-btn active" id="ftp-tab-list-btn" onclick="switchFtpModalTab('list')" style="border-radius: 4px;">Armazenadas</button>
-            <button class="db-tab-btn" id="ftp-tab-form-btn" onclick="switchFtpModalTab('form')" style="border-radius: 4px;">Nova Conexão</button>
+            <button class="db-tab-btn" id="ftp-tab-form-btn" onclick="switchFtpModalTab('form', true)" style="border-radius: 4px;">Nova Conexão</button>
         </div>
         
         <div id="ftp-modal-list-view">

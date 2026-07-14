@@ -4,7 +4,7 @@ const originalFetch = window.fetch;
 window.fetch = async function(...args) {
     window.activeRequests++;
     const loader = document.getElementById('global-loading');
-    if(loader) loader.style.display = 'inline-block';
+    if(loader) loader.style.display = 'inline-flex';
     
     try {
         const response = await originalFetch.apply(this, args);

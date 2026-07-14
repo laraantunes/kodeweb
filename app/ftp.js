@@ -22,7 +22,7 @@ function initFtpModal() {
     }
 }
 
-function switchFtpModalTab(tabId) {
+function switchFtpModalTab(tabId, reset = false) {
     const listBtn = document.getElementById("ftp-tab-list-btn");
     const formBtn = document.getElementById("ftp-tab-form-btn");
     const listView = document.getElementById("ftp-modal-list-view");
@@ -39,6 +39,10 @@ function switchFtpModalTab(tabId) {
         listBtn.classList.remove("active");
         formView.classList.remove("hidden");
         listView.classList.add("hidden");
+        if (reset) {
+            document.getElementById("form-ftp-connection").reset();
+            document.getElementById("ftp-conn-id").value = "";
+        }
     }
 }
 
@@ -68,16 +72,43 @@ async function loadFtpConnections() {
             li.style.justifyContent = "space-between";
             li.style.alignItems = "center";
             
-            li.innerHTML = `
-                <div>
-                    <div style="font-weight: 500; font-size: 13px;">${escapeHTML(conn.name)}</div>
-                    <div class="db-conn-meta">${escapeHTML(conn.username)}@${escapeHTML(conn.host)}:${conn.port || 21}</div>
-                </div>
-                <div class="db-conn-actions">
-                    <button class="action-icon-btn" onclick="openFtpExplorer('${conn.id}', '${escapeHTML(conn.name)}')">🛜 Conectar</button>
-                    <button class="action-icon-btn danger" onclick="deleteFtpConnection('${conn.id}')">❌</button>
-                </div>
+            const infoDiv = document.createElement("div");
+            infoDiv.innerHTML = `
+                <div style="font-weight: 500; font-size: 13px;">${escapeHTML(conn.name)}</div>
+                <div class="db-conn-meta">${escapeHTML(conn.username)}@${escapeHTML(conn.host)}:${conn.port || 21}</div>
             `;
+            li.appendChild(infoDiv);
+            
+            const actionsDiv = document.createElement("div");
+            actionsDiv.className = "db-conn-actions";
+            
+            const connectBtn = document.createElement("button");
+            connectBtn.className = "action-icon-btn";
+            connectBtn.innerHTML = "🛜 Conectar";
+            connectBtn.addEventListener("click", () => openFtpExplorer(conn.id, conn.name));
+            actionsDiv.appendChild(connectBtn);
+            
+            const editBtn = document.createElement("button");
+            editBtn.className = "action-icon-btn";
+            editBtn.innerHTML = "✏️";
+            editBtn.addEventListener("click", () => {
+                switchFtpModalTab("form");
+                document.getElementById("ftp-conn-id").value = conn.id;
+                document.getElementById("ftp-conn-name").value = conn.name;
+                document.getElementById("ftp-host").value = conn.host;
+                document.getElementById("ftp-port").value = conn.port || "21";
+                document.getElementById("ftp-username").value = conn.username;
+                document.getElementById("ftp-password").value = "";
+            });
+            actionsDiv.appendChild(editBtn);
+            
+            const deleteBtn = document.createElement("button");
+            deleteBtn.className = "action-icon-btn danger";
+            deleteBtn.innerHTML = "❌";
+            deleteBtn.addEventListener("click", () => deleteFtpConnection(conn.id));
+            actionsDiv.appendChild(deleteBtn);
+            
+            li.appendChild(actionsDiv);
             ul.appendChild(li);
         });
     } catch (e) {

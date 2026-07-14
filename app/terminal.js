@@ -392,7 +392,7 @@ function restoreTerminalState() {
 }
 
 // SSH Connection Logic
-window.switchSshModalTab = function(tabId) {
+window.switchSshModalTab = function(tabId, reset = false) {
     const listBtn = document.getElementById("ssh-tab-list-btn");
     const formBtn = document.getElementById("ssh-tab-form-btn");
     const listView = document.getElementById("ssh-modal-list-view");
@@ -409,6 +409,10 @@ window.switchSshModalTab = function(tabId) {
         listBtn.classList.remove("active");
         formView.classList.remove("hidden");
         listView.classList.add("hidden");
+        if (reset) {
+            document.getElementById("form-ssh-connection").reset();
+            document.getElementById("ssh-conn-id").value = "";
+        }
     }
 }
 
@@ -438,17 +442,53 @@ async function loadSshConnections() {
             li.style.justifyContent = "space-between";
             li.style.alignItems = "center";
             
-            li.innerHTML = `
-                <div>
-                    <div style="font-weight: 500; font-size: 13px;">${escapeHTML(conn.name)}</div>
-                    <div class="db-conn-meta">${escapeHTML(conn.username)}@${escapeHTML(conn.host)}:${conn.port || 22}</div>
-                </div>
-                <div class="db-conn-actions">
-                    <button class="action-icon-btn" onclick="openSshTerminal('${conn.id}', '${escapeHTML(conn.name)}')">🖥️ Conectar</button>
-                    <button class="action-icon-btn" onclick="if(typeof openSshInteractiveTerminal === 'function') openSshInteractiveTerminal('${conn.id}', '${escapeHTML(conn.name)}')">💻 Interativo</button>
-                    <button class="action-icon-btn danger" onclick="deleteSshConnection('${conn.id}')">❌</button>
-                </div>
+            const infoDiv = document.createElement("div");
+            infoDiv.innerHTML = `
+                <div style="font-weight: 500; font-size: 13px;">${escapeHTML(conn.name)}</div>
+                <div class="db-conn-meta">${escapeHTML(conn.username)}@${escapeHTML(conn.host)}:${conn.port || 22}</div>
             `;
+            li.appendChild(infoDiv);
+            
+            const actionsDiv = document.createElement("div");
+            actionsDiv.className = "db-conn-actions";
+            
+            const connectBtn = document.createElement("button");
+            connectBtn.className = "action-icon-btn";
+            connectBtn.innerHTML = "🖥️ Conectar";
+            connectBtn.addEventListener("click", () => openSshTerminal(conn.id, conn.name));
+            actionsDiv.appendChild(connectBtn);
+            
+            const interactiveBtn = document.createElement("button");
+            interactiveBtn.className = "action-icon-btn";
+            interactiveBtn.innerHTML = "💻 Interativo";
+            interactiveBtn.addEventListener("click", () => {
+                if (typeof openSshInteractiveTerminal === 'function') {
+                    openSshInteractiveTerminal(conn.id, conn.name);
+                }
+            });
+            actionsDiv.appendChild(interactiveBtn);
+            
+            const editBtn = document.createElement("button");
+            editBtn.className = "action-icon-btn";
+            editBtn.innerHTML = "✏️";
+            editBtn.addEventListener("click", () => {
+                switchSshModalTab("form");
+                document.getElementById("ssh-conn-id").value = conn.id;
+                document.getElementById("ssh-conn-name").value = conn.name;
+                document.getElementById("ssh-host").value = conn.host;
+                document.getElementById("ssh-port").value = conn.port || "22";
+                document.getElementById("ssh-username").value = conn.username;
+                document.getElementById("ssh-password").value = "";
+            });
+            actionsDiv.appendChild(editBtn);
+            
+            const deleteBtn = document.createElement("button");
+            deleteBtn.className = "action-icon-btn danger";
+            deleteBtn.innerHTML = "❌";
+            deleteBtn.addEventListener("click", () => deleteSshConnection(conn.id));
+            actionsDiv.appendChild(deleteBtn);
+            
+            li.appendChild(actionsDiv);
             ul.appendChild(li);
         });
     } catch (e) {
@@ -582,6 +622,8 @@ function switchOptionsTab(tab) {
         if (themeSelect && window.EDITOR_THEME) {
             themeSelect.value = window.EDITOR_THEME;
         }
+    } else if (tab === 'plugins') {
+        loadPluginsConfig();
     }
 }
 
@@ -672,5 +714,94 @@ async function saveOptionsUser(event) {
         }
     } catch (err) {
         showToast("Erro ao atualizar usuário.", "error");
+    }
+}
+
+async function loadPluginsConfig() {
+    const listContainer = document.getElementById('options-plugins-list');
+    if (!listContainer) return;
+
+    listContainer.innerHTML = '<div style="text-align: center; color: var(--text-muted); padding: 20px;">Carregando plugins...</div>';
+
+    try {
+        const response = await fetch(getApiUrl('get_plugins') + '?action=get_plugins');
+        const data = await response.json();
+
+        if (data.success) {
+            if (!data.plugins || data.plugins.length === 0) {
+                listContainer.innerHTML = '<div style="text-align: center; color: var(--text-muted); padding: 20px;">Nenhum plugin instalado.</div>';
+                return;
+            }
+
+            listContainer.innerHTML = '';
+            data.plugins.forEach(plugin => {
+                const item = document.createElement('div');
+                item.className = 'plugin-item';
+                item.style.cssText = 'display: flex; align-items: flex-start; gap: 12px; padding: 12px; border: 1px solid var(--border-color); border-radius: 6px; background: var(--bg-primary); transition: background 0.2s;';
+                
+                // Add hover style dynamically
+                item.addEventListener('mouseenter', () => {
+                    item.style.background = 'var(--bg-hover)';
+                });
+                item.addEventListener('mouseleave', () => {
+                    item.style.background = 'var(--bg-primary)';
+                });
+
+                const creatorHtml = plugin.creator ? `<span style="font-size: 11px; color: var(--accent); font-weight: 500;">Criado por: ${plugin.creator}</span>` : '';
+                
+                item.innerHTML = `
+                    <div style="padding-top: 2px;">
+                        <input type="checkbox" class="plugin-status-checkbox" data-folder="${plugin.folder}" ${plugin.active ? 'checked' : ''} style="width: 16px; height: 16px; cursor: pointer; accent-color: var(--accent);">
+                    </div>
+                    <div style="flex: 1; display: flex; flex-direction: column; gap: 4px;">
+                        <div style="display: flex; align-items: center; justify-content: space-between;">
+                            <strong style="color: var(--text-active); font-size: 14px;">${plugin.name || plugin.folder}</strong>
+                            <span style="font-size: 11px; background: var(--bg-active); color: var(--text-muted); padding: 2px 6px; border-radius: 4px;">v${plugin.version || '1.0.0'}</span>
+                        </div>
+                        <p style="color: var(--text-muted); font-size: 12px; margin: 0; line-height: 1.4;">${plugin.description || 'Sem descrição.'}</p>
+                        ${creatorHtml}
+                    </div>
+                `;
+                listContainer.appendChild(item);
+            });
+        } else {
+            listContainer.innerHTML = `<div style="text-align: center; color: var(--accent-error); padding: 20px;">Erro ao carregar plugins: ${data.message || 'Erro desconhecido.'}</div>`;
+        }
+    } catch (err) {
+        listContainer.innerHTML = `<div style="text-align: center; color: var(--accent-error); padding: 20px;">Erro de conexão ao buscar plugins.</div>`;
+    }
+}
+
+async function savePluginsConfig() {
+    const listContainer = document.getElementById('options-plugins-list');
+    if (!listContainer) return;
+
+    const checkboxes = listContainer.querySelectorAll('.plugin-status-checkbox');
+    const activePlugins = [];
+    checkboxes.forEach(cb => {
+        if (cb.checked) {
+            activePlugins.push(cb.getAttribute('data-folder'));
+        }
+    });
+
+    try {
+        const formData = new FormData();
+        formData.append('action', 'save_plugins');
+        formData.append('active_plugins', JSON.stringify(activePlugins));
+
+        const response = await fetch(getApiUrl('save_plugins'), { method: 'POST', body: formData });
+        const data = await response.json();
+
+        if (data.success) {
+            showToast("Plugins salvos com sucesso. Recarregando a página...", "success");
+            closeModal('modal-options');
+            setTimeout(() => {
+                window.location.reload();
+            }, 1500);
+        } else {
+            showToast("Erro ao salvar plugins: " + (data.message || 'Erro desconhecido.'), "error");
+        }
+    } catch (err) {
+        showToast("Erro ao atualizar plugins.", "error");
     }
 }

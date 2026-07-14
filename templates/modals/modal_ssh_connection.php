@@ -5,7 +5,7 @@
         
         <div class="db-table-tabs" style="margin-bottom: 15px; justify-content: flex-start; gap: 10px;">
             <button class="db-tab-btn active" id="ssh-tab-list-btn" onclick="switchSshModalTab('list')" style="border-radius: 4px;">Armazenadas</button>
-            <button class="db-tab-btn" id="ssh-tab-form-btn" onclick="switchSshModalTab('form')" style="border-radius: 4px;">Nova Conexão</button>
+            <button class="db-tab-btn" id="ssh-tab-form-btn" onclick="switchSshModalTab('form', true)" style="border-radius: 4px;">Nova Conexão</button>
         </div>
         
         <div id="ssh-modal-list-view">
