@@ -98,7 +98,7 @@ async function loadFtpConnections() {
                 document.getElementById("ftp-host").value = conn.host;
                 document.getElementById("ftp-port").value = conn.port || "21";
                 document.getElementById("ftp-username").value = conn.username;
-                document.getElementById("ftp-password").value = "";
+                document.getElementById("ftp-password").value = conn.has_password ? "********" : "";
             });
             actionsDiv.appendChild(editBtn);
             

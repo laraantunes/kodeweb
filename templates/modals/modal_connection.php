@@ -4,6 +4,7 @@
         <h3 class="modal-header" id="modal-conn-title">Nova Conexão de Banco</h3>
         <form id="form-db-connection">
             <input type="hidden" id="db-conn-id">
+            <input type="hidden" id="db-conn-duplicate-from">
 
             <div class="form-group">
                 <label class="form-label" for="db-conn-name">Nome da Conexão</label>

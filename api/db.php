@@ -21,6 +21,7 @@ try {
                         if (isset($data['type']) && in_array($data['type'], ['ftp', 'ssh'])) {
                             continue;
                         }
+                        $data['has_password'] = !empty($data['password']);
                         // Omit password for safety
                         unset($data['password']);
                         $connections[] = $data;
@@ -33,6 +34,7 @@ try {
 
         case 'db_connection_save':
             $id = $_POST['id'] ?? '';
+            $duplicate_from = $_POST['duplicate_from'] ?? '';
             $name = $_POST['name'] ?? '';
             $driver = $_POST['driver'] ?? 'mysql';
             $host = $_POST['host'] ?? '';
@@ -47,9 +49,21 @@ try {
             
             if (empty($id)) {
                 $id = uniqid('conn_');
+                // If duplicating and password is '********', read password from the duplicated connection
+                if ($password === '********' && !empty($duplicate_from)) {
+                    $existingFile = $rootDir . '/connections/' . $duplicate_from . '.enc';
+                    if (file_exists($existingFile)) {
+                        $encData = file_get_contents($existingFile);
+                        $decData = KodeWebEncryption::decrypt($encData);
+                        if ($decData) {
+                            $oldConn = json_decode($decData, true);
+                            $password = $oldConn['password'] ?? '';
+                        }
+                    }
+                }
             } else {
-                // If editing and password is empty, merge with existing password
-                if (empty($password)) {
+                // If editing and password is '********', merge with existing password
+                if ($password === '********') {
                     $existingFile = $rootDir . '/connections/' . $id . '.enc';
                     if (file_exists($existingFile)) {
                         $encData = file_get_contents($existingFile);

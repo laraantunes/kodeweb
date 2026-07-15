@@ -33,6 +33,7 @@ async function loadDbConnections() {
                     <div class="db-conn-actions">
                         <button class="btn btn-sm" onclick="selectDbConnection('${conn.id}', event)">Conectar</button>
                         <button class="btn btn-sm" onclick="editDbConnection(${JSON.stringify(conn).replace(/"/g, '&quot;')}, event)">Editar</button>
+                        <button class="btn btn-sm" onclick="duplicateDbConnection(${JSON.stringify(conn).replace(/"/g, '&quot;')}, event)">Duplicar</button>
                         <button class="btn btn-sm btn-danger" onclick="deleteDbConnection('${conn.id}', event)">Excluir</button>
                     </div>
                 `;
@@ -77,6 +78,7 @@ async function loadDbConnectionsModalList() {
                     <div style="display: flex; gap: 5px;">
                         <button class="btn btn-sm" onclick="connectFromDbModalList('${conn.id}')">Conectar</button>
                         <button class="btn btn-sm" onclick="editDbConnection(${JSON.stringify(conn).replace(/"/g, '&quot;')}, event)">Editar</button>
+                        <button class="btn btn-sm" onclick="duplicateDbConnection(${JSON.stringify(conn).replace(/"/g, '&quot;')}, event)">Duplicar</button>
                         <button class="btn btn-sm btn-danger" onclick="deleteDbConnection('${conn.id}', event)">Excluir</button>
                     </div>
                 `;
@@ -140,6 +142,9 @@ function toggleDbConnectionFields() {
 function openAddConnectionModal() {
     document.getElementById('modal-conn-title').textContent = 'Nova Conexão de Banco';
     document.getElementById('db-conn-id').value = '';
+    if (document.getElementById('db-conn-duplicate-from')) {
+        document.getElementById('db-conn-duplicate-from').value = '';
+    }
     document.getElementById('db-conn-name').value = '';
     document.getElementById('db-host').value = '127.0.0.1';
     document.getElementById('db-port').value = '3306';
@@ -154,12 +159,34 @@ window.editDbConnection = function(conn, e) {
     if (e) e.stopPropagation();
     document.getElementById('modal-conn-title').textContent = 'Editar Conexão';
     document.getElementById('db-conn-id').value = conn.id;
+    if (document.getElementById('db-conn-duplicate-from')) {
+        document.getElementById('db-conn-duplicate-from').value = '';
+    }
     document.getElementById('db-conn-name').value = conn.name;
     document.getElementById('db-driver').value = conn.driver;
     document.getElementById('db-host').value = conn.host || '';
     document.getElementById('db-port').value = conn.port || '';
     document.getElementById('db-username').value = conn.username || '';
-    document.getElementById('db-password').value = ''; // Don't prefill password
+    document.getElementById('db-password').value = conn.has_password ? '********' : '';
+    document.getElementById('db-database').value = conn.database || '';
+    
+    toggleDbConnectionFields();
+    document.getElementById('modal-connection').classList.add('active');
+};
+
+window.duplicateDbConnection = function(conn, e) {
+    if (e) e.stopPropagation();
+    document.getElementById('modal-conn-title').textContent = 'Duplicar Conexão';
+    document.getElementById('db-conn-id').value = '';
+    if (document.getElementById('db-conn-duplicate-from')) {
+        document.getElementById('db-conn-duplicate-from').value = conn.id;
+    }
+    document.getElementById('db-conn-name').value = conn.name + ' (Cópia)';
+    document.getElementById('db-driver').value = conn.driver;
+    document.getElementById('db-host').value = conn.host || '';
+    document.getElementById('db-port').value = conn.port || '';
+    document.getElementById('db-username').value = conn.username || '';
+    document.getElementById('db-password').value = conn.has_password ? '********' : '';
     document.getElementById('db-database').value = conn.database || '';
     
     toggleDbConnectionFields();
@@ -201,6 +228,7 @@ async function saveDbConnection(e) {
     e.preventDefault();
     
     const id = document.getElementById('db-conn-id').value;
+    const duplicateFrom = document.getElementById('db-conn-duplicate-from') ? document.getElementById('db-conn-duplicate-from').value : '';
     const name = document.getElementById('db-conn-name').value;
     const driver = document.getElementById('db-driver').value;
     const host = document.getElementById('db-host').value;
@@ -212,6 +240,7 @@ async function saveDbConnection(e) {
     const formData = new FormData();
     formData.append('action', 'db_connection_save');
     formData.append('id', id);
+    formData.append('duplicate_from', duplicateFrom);
     formData.append('name', name);
     formData.append('driver', driver);
     formData.append('host', host);

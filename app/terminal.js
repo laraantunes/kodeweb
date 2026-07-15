@@ -478,7 +478,7 @@ async function loadSshConnections() {
                 document.getElementById("ssh-host").value = conn.host;
                 document.getElementById("ssh-port").value = conn.port || "22";
                 document.getElementById("ssh-username").value = conn.username;
-                document.getElementById("ssh-password").value = "";
+                document.getElementById("ssh-password").value = conn.has_password ? "********" : "";
             });
             actionsDiv.appendChild(editBtn);
             

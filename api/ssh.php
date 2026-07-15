@@ -14,6 +14,7 @@ try {
                 if ($decryptedData) {
                     $data = json_decode($decryptedData, true);
                     if ($data && isset($data['type']) && $data['type'] === 'ssh') {
+                        $data['has_password'] = !empty($data['password']);
                         unset($data['password']);
                         $connections[] = $data;
                     }
@@ -33,7 +34,7 @@ try {
             if (empty($id)) {
                 $id = uniqid('ssh_');
             } else {
-                if (empty($password)) {
+                if ($password === '********') {
                     $existingFile = $rootDir . '/connections/' . $id . '.enc';
                     if (file_exists($existingFile)) {
                         $encData = file_get_contents($existingFile);
