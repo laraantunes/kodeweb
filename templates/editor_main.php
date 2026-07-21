@@ -61,7 +61,7 @@
         </div>
     </div>
     <div style="margin-top: 30px; font-size: 11px; color: var(--text-muted); text-align: center;">
-        <?= $app_version ?> - 2026 <a href="https://laralabs.dev" target="_blank" style="color: var(--accent); text-decoration: none; font-weight: 500;">Laralabs</a>
+        <?= $app_version ?> - 2026 <a href="https://laralabs.dev" target="_blank" style="color: var(--accent); text-decoration: none; font-weight: 500;">Laralabs</a> em <a href="https://kodeweb.app.br" target="_blank" style="color: var(--accent); text-decoration: none;">kodeweb.app.br</a>
     </div>
 </div>
 <div id="editor" class="editor-instance hidden"></div>
