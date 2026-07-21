@@ -130,6 +130,7 @@ function createTabUI(path, name) {
     });
     
     const title = document.createElement('span');
+    title.className = 'tab-title';
     title.textContent = name;
     title.style.marginRight = '8px';
     tab.appendChild(title);
@@ -139,17 +140,17 @@ function createTabUI(path, name) {
     closeBtn.textContent = '×';
     closeBtn.addEventListener('click', (e) => {
         e.stopPropagation();
-        closeTab(path);
+        closeTab(tab.dataset.path);
     });
     tab.appendChild(closeBtn);
     
-    tab.addEventListener('click', () => activateTab(path));
+    tab.addEventListener('click', () => activateTab(tab.dataset.path));
     
     tab.addEventListener('mousedown', (e) => {
         if (e.button === 1) { // Middle click
             e.preventDefault();
             e.stopPropagation();
-            closeTab(path);
+            closeTab(tab.dataset.path);
         }
     });
     
@@ -387,6 +388,13 @@ async function saveActiveFile() {
     const tab = state.openTabs[state.activeTabPath];
     const content = state.editor.getValue();
     
+    if (tab.isNew) {
+        if (typeof openSaveAsModal === 'function') {
+            openSaveAsModal();
+        }
+        return;
+    }
+    
     if (tab.isLocal) {
         // Trigger download
         const blob = new Blob([content], { type: 'text/plain' });
@@ -471,8 +479,8 @@ function updateBreadcrumb(path) {
         return;
     }
 
+    const tabInfo = state.openTabs[path];
     if (path.startsWith('plugin_')) {
-        const tabInfo = state.openTabs[path];
         if (tabInfo && tabInfo.name) {
             const item = document.createElement('span');
             item.className = 'breadcrumb-item';
@@ -482,6 +490,13 @@ function updateBreadcrumb(path) {
         }
     }
     
+    if (tabInfo && tabInfo.isNew) {
+        const item = document.createElement('span');
+        item.className = 'breadcrumb-item';
+        item.textContent = tabInfo.name;
+        breadcrumb.appendChild(item);
+    } else {
+
     const parts = path.split(/[\/\\]/);
     let currentAccumulated = '';
     
@@ -501,4 +516,15 @@ function updateBreadcrumb(path) {
         
         breadcrumb.appendChild(item);
     });
+    }
+
+    if (!path.startsWith('plugin_') && path !== 'Explorador de Banco de Dados' && path !== 'Git Integrado') {
+        const actionsContainer = document.createElement('span');
+        actionsContainer.style.marginLeft = '10px';
+        actionsContainer.innerHTML = `
+            <span title="Salvar (Ctrl+S)" style="cursor:pointer; margin-right:8px; color:var(--text-muted); font-size:14px;" onclick="saveActiveFile()" onmouseover="this.style.color='var(--accent)'" onmouseout="this.style.color='var(--text-muted)'">💾</span>
+            <span title="Salvar Como... (Ctrl+Shift+S)" style="cursor:pointer; color:var(--text-muted); font-size:14px;" onclick="openSaveAsModal()" onmouseover="this.style.color='var(--accent)'" onmouseout="this.style.color='var(--text-muted)'">📤</span>
+        `;
+        breadcrumb.appendChild(actionsContainer);
+    }
 }

@@ -204,6 +204,18 @@ function initEventListeners() {
             toggleGlobalSearchModal();
         }
 
+        const isS = e.key.toLowerCase() === 's';
+        const isCtrlS = (e.ctrlKey || e.metaKey) && isS;
+        if (isCtrlS) {
+            e.preventDefault();
+            if (e.shiftKey) {
+                if (typeof openSaveAsModal === 'function') openSaveAsModal();
+            } else {
+                if (typeof saveActiveFile === 'function') saveActiveFile();
+            }
+            return;
+        }
+
         if (e.key === 'Escape') {
             let closedAny = false;
             document.querySelectorAll('.modal-overlay.active').forEach(modal => {
@@ -1405,3 +1417,178 @@ async function saveDbRowSubmit(e) {
         submitBtn.textContent = 'Salvar';
     }
 }
+
+window.updateKodeWeb = function(btn) {
+    showConfirm("Deseja realmente buscar e instalar a última atualização do KodeWeb?", async () => {
+        const originalText = btn.innerHTML;
+        btn.innerHTML = '<i class="fas fa-spinner fa-spin"></i> Atualizando...';
+        btn.disabled = true;
+
+        try {
+            const formData = new FormData();
+            formData.append('action', 'update_kodeweb');
+            
+            const response = await fetch(getApiUrl('update_kodeweb'), { method: 'POST', body: formData });
+            const data = await response.json();
+            
+            if (data.success) {
+                showToast("KodeWeb atualizado com sucesso! Recarregando...", "success");
+                setTimeout(() => {
+                    window.location.reload();
+                }, 1500);
+            } else {
+                showToast("Erro ao atualizar: " + (data.message || 'Erro desconhecido'), "error");
+            }
+        } catch (err) {
+            showToast("Erro na requisição: " + err.message, "error");
+        } finally {
+            btn.innerHTML = originalText;
+            btn.disabled = false;
+        }
+    });
+};
+
+let currentSaveAsPath = '';
+
+window.openSaveAsModal = function() {
+    if (!state.activeTabPath) return;
+    const tab = state.openTabs[state.activeTabPath];
+    
+    document.getElementById('save-as-filename').value = tab.isNew ? 'novo_arquivo.txt' : (tab.name || '');
+    currentSaveAsPath = ''; // Root
+    document.getElementById('save-as-selected-path').textContent = '/';
+    
+    renderSaveAsTree('');
+    document.getElementById('modal-save-as').classList.add('active');
+};
+
+async function renderSaveAsTree(path) {
+    const container = document.getElementById('save-as-tree');
+    container.innerHTML = '<div style="padding: 10px; color: var(--text-muted);"><i class="fas fa-spinner fa-spin"></i> Carregando...</div>';
+    
+    try {
+        const response = await fetch(getApiUrl('files_list') + `?action=files_list&path=${encodeURIComponent(path)}`);
+        const data = await response.json();
+        
+        if (!data.success) throw new Error(data.message);
+        
+        container.innerHTML = '';
+        
+        if (path) {
+            const upRow = document.createElement('div');
+            upRow.className = 'tree-row';
+            upRow.style.cursor = 'pointer';
+            upRow.style.padding = '4px 8px';
+            upRow.innerHTML = `<span>📁 .. (Voltar)</span>`;
+            upRow.addEventListener('click', () => {
+                const normalizedPath = path.replace(/\\/g, '/');
+                const parts = normalizedPath.split('/');
+                parts.pop();
+                const parentPath = parts.join('/');
+                currentSaveAsPath = parentPath;
+                document.getElementById('save-as-selected-path').textContent = '/' + (currentSaveAsPath || '');
+                renderSaveAsTree(parentPath);
+            });
+            container.appendChild(upRow);
+        }
+        
+        data.files.forEach(file => {
+            if (!file.is_dir) return; 
+            
+            const row = document.createElement('div');
+            row.className = 'tree-row';
+            row.style.cursor = 'pointer';
+            row.style.padding = '4px 8px';
+            row.innerHTML = `<span>📁 ${file.name}</span>`;
+            
+            row.addEventListener('click', () => {
+                currentSaveAsPath = file.path.replace(/\\/g, '/');
+                document.getElementById('save-as-selected-path').textContent = '/' + currentSaveAsPath;
+                renderSaveAsTree(currentSaveAsPath);
+            });
+            container.appendChild(row);
+        });
+        
+        if (container.children.length === 0) {
+            container.innerHTML = '<div style="padding: 10px; color: var(--text-muted);">Nenhuma pasta encontrada</div>';
+        }
+    } catch (err) {
+        container.innerHTML = `<div style="padding: 10px; color: var(--accent-danger);">Erro: ${err.message}</div>`;
+    }
+}
+
+window.executeSaveAs = async function() {
+    const filename = document.getElementById('save-as-filename').value.trim();
+    if (!filename) {
+        showToast("Por favor, informe o nome do arquivo.", "error");
+        return;
+    }
+    
+    const fullPath = (currentSaveAsPath ? currentSaveAsPath + '/' : '') + filename;
+    const content = state.editor.getValue();
+    
+    const formData = new FormData();
+    formData.append('action', 'file_save');
+    formData.append('path', fullPath);
+    formData.append('content', content);
+    
+    try {
+        const response = await fetch(getApiUrl('file_save'), { method: 'POST', body: formData });
+        const data = await response.json();
+        
+        if (data.success) {
+            showToast("Arquivo salvo com sucesso!", "success");
+            closeModal('modal-save-as');
+            
+            const oldPath = state.activeTabPath;
+            const tab = state.openTabs[oldPath];
+            
+            const newPath = fullPath;
+            tab.path = newPath;
+            tab.name = filename;
+            tab.isNew = false;
+            tab.isLocal = false;
+            tab.isDirty = false;
+            tab.session.getUndoManager().markClean();
+            
+            delete state.openTabs[oldPath];
+            state.openTabs[newPath] = tab;
+            state.activeTabPath = newPath;
+            
+            const tabEl = document.querySelector(`.tab[data-path="${CSS.escape(oldPath)}"]`);
+            if (tabEl) {
+                tabEl.dataset.path = newPath;
+                tabEl.querySelector('.tab-title').textContent = filename;
+                // Event listeners on tab read from dataset.path dynamically
+            }
+            
+            if (typeof updateTabUI === 'function') updateTabUI(newPath);
+            if (typeof updateBreadcrumb === 'function') updateBreadcrumb(newPath);
+            if (typeof loadFiles === 'function') loadFiles();
+            localStorage.removeItem('kodeweb_dirty_' + oldPath);
+            
+        } else {
+            showToast("Erro ao salvar: " + data.message, "error");
+        }
+    } catch (err) {
+        showToast("Erro na requisição: " + err.message, "error");
+    }
+};
+
+window.executeSaveAsDownload = function() {
+    const filename = document.getElementById('save-as-filename').value.trim() || 'novo_arquivo.txt';
+    const content = state.editor.getValue();
+    
+    const blob = new Blob([content], { type: 'text/plain' });
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement('a');
+    a.href = url;
+    a.download = filename;
+    document.body.appendChild(a);
+    a.click();
+    document.body.removeChild(a);
+    URL.revokeObjectURL(url);
+    
+    closeModal('modal-save-as');
+    showToast("Arquivo baixado com sucesso.", "success");
+};

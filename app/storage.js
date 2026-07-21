@@ -47,7 +47,8 @@ function saveTabsState() {
                 isSpecial: t.isSpecial || false,
                 isImage: t.isImage || false,
                 isPdf: t.isPdf || false,
-                isLocal: t.isLocal || false
+                isLocal: t.isLocal || false,
+                isNew: t.isNew || false
             });
         });
         try {
@@ -77,6 +78,20 @@ async function restoreTabsState() {
                     if (content !== null) {
                         openLocalFile({ name: t.name, type: 'text/plain' }, content, t.path);
                     }
+                } else if (t.isNew) {
+                    state.openTabs[t.path] = {
+                        path: t.path,
+                        name: t.name,
+                        isLocal: false,
+                        isNew: true,
+                        session: ace.createEditSession("", "ace/mode/text")
+                    };
+                    const content = localStorage.getItem('kodeweb_dirty_' + t.path);
+                    if (content !== null) {
+                        state.openTabs[t.path].session.setValue(content);
+                        state.openTabs[t.path].isDirty = true;
+                    }
+                    if (typeof createTabUI === 'function') createTabUI(t.path, t.name);
                 } else {
                     await openFile(t.path, t.name);
                 }

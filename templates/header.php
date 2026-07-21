@@ -20,6 +20,9 @@
             </svg>
             <span style="margin-left: 5px;">Processando...</span>
         </span>
+        <button class="toggle-btn tooltip-right" id="new-blank-file-btn" title="Novo Arquivo (Em Branco)" onclick="openNewBlankFile()">
+            <span>📄</span> Novo
+        </button>
         <button class="toggle-btn active tooltip-right" id="toggle-left-btn" title="Exibir/Ocultar Explorer">
             <span>📁</span> Arquivos
         </button>

@@ -216,3 +216,22 @@ function showTreeContextMenu(e, path, name, isDir) {
         menu.style.top = `${e.clientY - rect.height}px`;
     }
 }
+
+window.openNewBlankFile = function() {
+    const unnamedId = 'Untitled-' + Date.now();
+    
+    // Add to open tabs
+    state.openTabs[unnamedId] = {
+        path: unnamedId,
+        name: 'Sem Título',
+        isLocal: false,
+        isNew: true, // Mark as new so we know it has no path yet
+        session: ace.createEditSession("", "ace/mode/text")
+    };
+    
+    // Create tab UI
+    if (typeof createTabUI === 'function') {
+        createTabUI(unnamedId, 'Sem Título');
+    }
+    activateTab(unnamedId);
+};

@@ -23,6 +23,17 @@ function initAceEditor() {
         }
     });
 
+    // Add Save As Command
+    state.editor.commands.addCommand({
+        name: 'saveAs',
+        bindKey: { win: 'Ctrl-Shift-S', mac: 'Command-Shift-S' },
+        exec: function(editor) {
+            if (typeof openSaveAsModal === 'function') {
+                openSaveAsModal();
+            }
+        }
+    });
+
     // Add Close Tab Command
     state.editor.commands.addCommand({
         name: 'closeTab',
