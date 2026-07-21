@@ -161,7 +161,7 @@ function activateTab(path) {
     state.activeTabPath = path;
     
     // Update active tab UI class
-    document.querySelectorAll('.tab').forEach(tab => {
+    document.querySelectorAll('#tabs-container .tab').forEach(tab => {
         tab.classList.toggle('active', tab.dataset.path === path);
     });
     

@@ -5,7 +5,7 @@ function updateTerminalPrompt(cwd, termId = null) {
     state.terminals[termId].cwd = cwd;
     
     if (termId === state.activeTerminalId) {
-        const shortCwd = cwd.replace(state.workspaceRoot, 'Workspace');
+        const shortCwd = (cwd || '').replace(state.workspaceRoot || '', 'Workspace');
         const username = state.username || 'user';
         document.getElementById('terminal-prompt-path').textContent = `${username}@kodeweb:${shortCwd}$`;
     }
@@ -182,6 +182,9 @@ function activateTerminalTab(termId) {
     
     // Update prompt
     updateTerminalPrompt(term.cwd, termId);
+    
+    // Save state
+    saveTerminalState();
     
     // Render tabs
     renderTerminalTabs();
@@ -373,7 +376,10 @@ function restoreTerminalState() {
                     };
                 }
                 state.activeTerminalId = data.activeTerminalId;
-                state.terminalCounter = data.terminalCounter;
+                if (!state.terminals[state.activeTerminalId]) {
+                    state.activeTerminalId = Object.keys(state.terminals)[0];
+                }
+                state.terminalCounter = data.terminalCounter || Object.keys(state.terminals).length;
                 
                 renderTerminalTabs();
                 if (state.activeTerminalId) {
