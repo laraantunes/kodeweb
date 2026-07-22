@@ -8,6 +8,9 @@
                 <p style="margin-top: 10px; font-size: 13px; color: var(--text-muted);">
                     <a href="https://github.com/laraantunes/kodeweb" target="_blank" style="color: var(--accent); text-decoration: none;">https://github.com/laraantunes/kodeweb</a>
                 </p>
+                <p style="margin-top: 10px; font-size: 13px; color: var(--text-muted);">
+                    <a href="https://kodeweb.app.br" target="_blank" style="color: var(--accent); text-decoration: none;">https://kodeweb.app.br</a>
+                </p>
                 <div style="margin-top: 20px;">
                     <button class="btn btn-primary" id="btn-update-kodeweb" onclick="updateKodeWeb(this)">Buscar Atualizações</button>
                 </div>
