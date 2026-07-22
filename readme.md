@@ -71,7 +71,11 @@ Basta abrir o menu `Opções` -> `Sobre` na interface e clicar em **Buscar Atual
 
 *   **Salvar arquivo**: `Ctrl + S` (Windows/Linux) ou `Cmd + S` (macOS).
 *   **Fechar aba**: `Alt + W` / `Option + W`.
-*   **Busca Global em Arquivos**: `Ctrl + Shift + F` / `Cmd + Shift + F`.
+*   **Busca Global de Arquivos**: `Ctrl + P` / `Cmd + P`.
 *   **Rodar SQL**: `Ctrl + Enter` (dentro da tela de Consulta Customizada do DB Explorer).
 *   **Alternar painel lateral**: `Ctrl + B` ou arraste a barra de expansão.
 *   **Alternar Markdown Preview**: Abra um arquivo `.md` e clique no botão de preview na janela de edição.
+
+## 📱 Quer um editor dedicado para celulares?
+
+Experimente o [KodeWeb Lite](https://github.com/laraantunes/kodeweblite), o "irmão mais novo" do KodeWeb IDE, criado especialmente para ser usado em celulares!
