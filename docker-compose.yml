@@ -1,0 +1,15 @@
+version: '3.8'
+
+services:
+  kodeweb:
+    build: .
+    container_name: kodeweb_app
+    ports:
+      - "8080:80"
+    volumes:
+      # Montar a pasta atual no container para facilitar o desenvolvimento (opcional)
+      # - .:/var/www/html
+      # Ou montar apenas pastas específicas que requerem persistência (ex: sqlite, logs, etc)
+      - ./data:/var/www/html/data
+      - ./connections:/var/www/html/connections
+    restart: unless-stopped
