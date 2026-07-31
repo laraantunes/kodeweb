@@ -47,21 +47,33 @@ A forma oficial e recomendada de instalar o KodeWeb é baixando a versão já em
 
 **Para desenvolvedores:** Caso prefira fazer o deploy via `git clone`, você deverá executar `composer install` manualmente na pasta.
 
-### 2. Instalação Inicial e Criação de Usuário
+### 2. Rodando com Docker (Recomendado)
+O KodeWeb já vem pronto para rodar em containers! Após clonar o repositório ou extrair os arquivos, basta abrir o terminal na pasta do projeto e executar:
+
+```bash
+docker-compose up -d --build
+```
+A IDE estará disponível em `http://localhost:8080`. O container já configura automaticamente o Apache, PHP, as extensões necessárias e o servidor WebSocket para o Terminal Interativo.
+
+**Acessando arquivos locais:** No arquivo `docker-compose.yml`, deixamos configurado o mapeamento da unidade `D:\` do seu computador para a pasta `/workspace` dentro do container. Assim, ao abrir a IDE, basta navegar até `/workspace` para editar seus arquivos locais! (Você pode alterar essa unidade no arquivo `docker-compose.yml` conforme desejar).
+
+
+### 3. Instalação Inicial e Criação de Usuário
 O acesso ao KodeWeb é restrito a você.
-1. Acesse a pasta da IDE no seu navegador (ex: `http://localhost/kodeweb`).
+1. Acesse a pasta da IDE no seu navegador (ex: `http://localhost/kodeweb` ou `http://localhost:8080` se usar Docker).
 2. Você será redirecionado para a tela de **Instalação**.
 3. Defina seu **Usuário** e **Senha** mestre.
 4. O sistema gerará automaticamente uma chave de criptografia interna forte (`.key`) para proteger senhas de bancos, FTP e SSH.
 
-### 3. Permissões de Pasta
+### 4. Permissões de Pasta
 O usuário do servidor web (`www-data` ou `http`) deve possuir permissão de escrita e leitura na pasta raiz do KodeWeb, para conseguir gerenciar e salvar arquivos:
 ```bash
 chown -R www-data:www-data /caminho/para/kodeweb
 chmod -R 755 /caminho/para/kodeweb
 ```
+*(Se estiver usando Docker, as permissões já são configuradas automaticamente na imagem).*
 
-### 4. Atualização Inteligente (One-Click Update)
+### 5. Atualização Inteligente (One-Click Update)
 Não é mais necessário usar o terminal para manter a IDE atualizada! O KodeWeb conta com um **Atualizador Integrado**. 
 Basta abrir o menu `Opções` -> `Sobre` na interface e clicar em **Buscar Atualizações**. A IDE fará o download silencioso do `.zip` da última release do GitHub e se auto-atualizará sem apagar suas configurações ou bancos de dados salvos.
 

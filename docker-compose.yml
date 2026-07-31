@@ -12,4 +12,7 @@ services:
       # Ou montar apenas pastas específicas que requerem persistência (ex: sqlite, logs, etc)
       - ./data:/var/www/html/data
       - ./connections:/var/www/html/connections
+      # Mapear uma pasta do seu computador para o KodeWeb acessar como Workspace:
+      # Exemplo Windows: - C:\Users\SeuUsuario\Projetos:/workspace
+      - D:\:/workspace
     restart: unless-stopped
