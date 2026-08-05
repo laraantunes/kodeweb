@@ -2,7 +2,7 @@
             <div style="margin-bottom: 20px; border-bottom: 1px solid var(--border-color); padding-bottom: 15px;">
                 <p style="margin-bottom: 10px; font-size: 13px; color: var(--text-muted);">Configurações avançadas do usuário:</p>
                 <?php
-                $kodeWebRoot = dirname(dirname(__DIR__));
+                $kodeWebRoot = dirname(dirname(dirname(__DIR__)));
                 $workspacePath = dirname($kodeWebRoot);
                 if (isset($env['WORKSPACE_PATH']) && trim($env['WORKSPACE_PATH']) !== '') {
                     $workspacePath = trim($env['WORKSPACE_PATH']);
