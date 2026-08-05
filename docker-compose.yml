@@ -12,7 +12,6 @@ services:
       # Ou montar apenas pastas específicas que requerem persistência (ex: sqlite, logs, etc)
       - ./data:/var/www/html/data
       - ./connections:/var/www/html/connections
-      # Mapear uma pasta do seu computador para o KodeWeb acessar como Workspace:
-      # Exemplo Windows: - C:\Users\SeuUsuario\Projetos:/workspace
-      - D:\:/workspace
+      # Defina KODEWEB_DOCKER_WORKSPACE_ROOT no seu arquivo .env (ex: KODEWEB_DOCKER_WORKSPACE_ROOT=C:\)
+      - ${KODEWEB_DOCKER_WORKSPACE_ROOT:-./workspace}:/workspace
     restart: unless-stopped

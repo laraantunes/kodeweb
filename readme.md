@@ -55,7 +55,7 @@ docker-compose up -d --build
 ```
 A IDE estará disponível em `http://localhost:8080`. O container já configura automaticamente o Apache, PHP, as extensões necessárias e o servidor WebSocket para o Terminal Interativo.
 
-**Acessando arquivos locais:** No arquivo `docker-compose.yml`, deixamos configurado o mapeamento da unidade `D:\` do seu computador para a pasta `/workspace` dentro do container. Assim, ao abrir a IDE, basta navegar até `/workspace` para editar seus arquivos locais! (Você pode alterar essa unidade no arquivo `docker-compose.yml` conforme desejar).
+**Acessando arquivos locais:** O arquivo `docker-compose.yml` utiliza a variável `KODEWEB_DOCKER_WORKSPACE_ROOT` definida no arquivo `.env` para mapear arquivos da sua máquina. Assim, ao abrir a IDE, basta navegar até `/workspace` para editar seus projetos locais! (Edite a variável `KODEWEB_DOCKER_WORKSPACE_ROOT="D:\"` no seu `.env` conforme desejar).
 
 
 ### 3. Instalação Inicial e Criação de Usuário
