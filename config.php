@@ -1,6 +1,6 @@
 <?php
 
-$app_version = "v2.6.3";
+$app_version = "v2.6.4";
 
 $local = false;
 $env_file = __DIR__ . '/.env';

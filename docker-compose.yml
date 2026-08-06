@@ -7,9 +7,8 @@ services:
     ports:
       - "8080:80"
     volumes:
-      # Montar a pasta atual no container para facilitar o desenvolvimento (opcional)
-      # - .:/var/www/html
-      # Ou montar apenas pastas específicas que requerem persistência (ex: sqlite, logs, etc)
+      # Montar a pasta atual no container para persistir auto-atualizações do código
+      - ./:/var/www/html
       - ./data:/var/www/html/data
       - ./connections:/var/www/html/connections
       # Defina KODEWEB_DOCKER_WORKSPACE_ROOT no seu arquivo .env (ex: KODEWEB_DOCKER_WORKSPACE_ROOT=C:\)
