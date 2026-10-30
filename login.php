@@ -2,6 +2,7 @@
 // login.php
 
 require_once __DIR__ . '/session.php';
+require_once __DIR__ . '/config.php';
 
 $auth_file = __DIR__ . '/data/auth.enc';
 
@@ -11,7 +12,7 @@ if (!file_exists($auth_file)) {
 }
 
 if (!empty($_SESSION['logged_in'])) {
-    header("Location: index.php");
+    header("Location: ./");
     exit;
 }
 
@@ -31,7 +32,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
             $authData = json_decode($decData, true);
             if ($authData && $username === $authData['username'] && password_verify($password, $authData['password'])) {
                 $_SESSION['logged_in'] = true;
-                header("Location: index.php");
+                header("Location: ./");
                 exit;
             } else {
                 $error = 'Usuário ou senha incorretos.';
@@ -52,7 +53,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
     <link rel="stylesheet" href="style.css">
     
     <!-- PWA configuration -->
-    <link rel="manifest" href="manifest.json?v=2.7.1">
+    <link rel="manifest" href="manifest.json?v=<?= urlencode($app_version ?? 'v2.7.2') ?>">
     <meta name="theme-color" content="#140523">
     <meta name="mobile-web-app-capable" content="yes">
     <meta name="apple-mobile-web-app-capable" content="yes">
@@ -131,7 +132,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
     <!-- Register Service Worker in login page -->
     <script>
         if ('serviceWorker' in navigator) {
-            navigator.serviceWorker.register('sw.js', { updateViaCache: 'none' })
+            navigator.serviceWorker.register('sw.js?v=<?= urlencode($app_version ?? 'v2.7.2') ?>', { updateViaCache: 'none' })
                 .then(reg => {
                     reg.update();
                     console.log('Service Worker registrado (login):', reg.scope);

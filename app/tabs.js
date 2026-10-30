@@ -271,13 +271,14 @@ function activateTab(path) {
             if(pdfContainer) pdfContainer.classList.add('hidden');
             document.querySelectorAll('.plugin-container').forEach(el => el.classList.add('hidden'));
             
-            // Swap Ace session
-            state.editor.setSession(tabInfo.session);
-            state.editor.focus();
-            
-            // Hide placeholder, show editor
+            // Hide placeholder, show editor before setting session so Ace measures dimensions properly
             document.getElementById('no-file-placeholder').classList.add('hidden');
             document.getElementById('editor').classList.remove('hidden');
+
+            // Swap Ace session
+            state.editor.setSession(tabInfo.session);
+            state.editor.resize();
+            state.editor.focus();
         }
     }
     

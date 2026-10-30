@@ -22,6 +22,7 @@
     <script>
         const CURRENT_USERNAME = <?= json_encode($current_username) ?>;
         const EDITOR_THEME = <?= json_encode($editor_theme) ?>;
+        const APP_VERSION = <?= json_encode($app_version ?? 'v2.7.2') ?>;
     </script>
     <?php
     foreach ($active_plugins as $plugin) {

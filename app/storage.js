@@ -97,7 +97,7 @@ async function restoreTabsState() {
                     await openFile(t.path, t.name);
                 }
             }
-            if (saved.active && state.openTabs[saved.active]) {
+            if (!state.launchedViaFileHandler && saved.active && state.openTabs[saved.active]) {
                 activateTab(saved.active);
             }
         }
@@ -163,6 +163,7 @@ function initFileHandler() {
             if (!launchParams || !launchParams.files || launchParams.files.length === 0) {
                 return;
             }
+            state.launchedViaFileHandler = true;
             for (const fileHandle of launchParams.files) {
                 try {
                     if (fileHandle.kind && fileHandle.kind !== 'file') continue;
@@ -196,6 +197,7 @@ function initFileHandler() {
                 getAllReq.onsuccess = async () => {
                     const handles = getAllReq.result || [];
                     if (handles.length > 0) {
+                        state.launchedViaFileHandler = true;
                         const clearTx = db.transaction('pending_files', 'readwrite');
                         clearTx.objectStore('pending_files').clear();
                         for (const fileHandle of handles) {
@@ -213,61 +215,118 @@ function initFileHandler() {
 }
 
 async function processLocalFileHandle(fileHandle) {
-    // Check if this exact FileSystemFileHandle is already open in a tab
-    for (const existingPath of Object.keys(state.openTabs)) {
-        const existingTab = state.openTabs[existingPath];
-        if (existingTab && existingTab.fileHandle && typeof existingTab.fileHandle.isSameEntry === 'function') {
+    if (!state.openingLocalFiles) state.openingLocalFiles = new Set();
+    const lockKey = fileHandle.name || 'unknown';
+    if (state.openingLocalFiles.has(lockKey)) {
+        return;
+    }
+    state.openingLocalFiles.add(lockKey);
+
+    try {
+        // Check if this exact FileSystemFileHandle is already open in a tab
+        for (const existingPath of Object.keys(state.openTabs)) {
+            const existingTab = state.openTabs[existingPath];
+            if (existingTab && existingTab.fileHandle && typeof existingTab.fileHandle.isSameEntry === 'function') {
+                try {
+                    if (await existingTab.fileHandle.isSameEntry(fileHandle)) {
+                        activateTab(existingPath);
+                        return;
+                    }
+                } catch (e) {}
+            }
+        }
+
+        // Request read permission if needed (e.g. when restored from IndexedDB after login)
+        if (typeof fileHandle.queryPermission === 'function') {
             try {
-                if (await existingTab.fileHandle.isSameEntry(fileHandle)) {
-                    activateTab(existingPath);
-                    return;
+                let perm = await fileHandle.queryPermission({ mode: 'read' });
+                if (perm !== 'granted' && typeof fileHandle.requestPermission === 'function') {
+                    perm = await fileHandle.requestPermission({ mode: 'read' });
                 }
             } catch (e) {}
         }
-    }
 
-    const file = await fileHandle.getFile();
+        const file = await fileHandle.getFile();
 
-    // Check if there is a restored local tab with the same name and no fileHandle yet
-    for (const existingPath of Object.keys(state.openTabs)) {
-        const existingTab = state.openTabs[existingPath];
-        if (existingTab && existingTab.isLocal && !existingTab.fileHandle && existingTab.name === file.name && !existingTab.isDirty) {
-            existingTab.fileHandle = fileHandle;
-            if (!existingTab.isImage && !existingTab.isPdf && existingTab.session) {
-                const textContent = await file.text();
-                existingTab.session.setValue(textContent);
-                existingTab.session.getUndoManager().markClean();
-                existingTab.isDirty = false;
-                localStorage.setItem('kodeweb_dirty_' + existingPath, textContent);
-                updateTabUI(existingPath);
+        // Check if there is any existing local tab with the same file name
+        for (const existingPath of Object.keys(state.openTabs)) {
+            const existingTab = state.openTabs[existingPath];
+            if (existingTab && existingTab.isLocal && existingTab.name === file.name) {
+                existingTab.fileHandle = fileHandle;
+                if (!existingTab.isImage && !existingTab.isPdf && existingTab.session) {
+                    const textContent = await file.text();
+                    existingTab.session.setValue(textContent);
+                    existingTab.session.getUndoManager().markClean();
+                    existingTab.isDirty = false;
+                    try {
+                        localStorage.setItem('kodeweb_dirty_' + existingPath, textContent);
+                    } catch (e) {}
+                    updateTabUI(existingPath);
+                }
+                activateTab(existingPath);
+                saveTabsState();
+                return;
             }
-            activateTab(existingPath);
-            return;
         }
-    }
 
-    readAndOpenLocalFile(file, fileHandle);
+        await readAndOpenLocalFile(file, fileHandle);
+    } finally {
+        state.openingLocalFiles.delete(lockKey);
+    }
 }
 
 function readAndOpenLocalFile(file, fileHandle = null) {
-    const reader = new FileReader();
-    const ext = file.name.split('.').pop().toLowerCase();
-    const isImg = (file.type && file.type.startsWith('image/') && ext !== 'svg') || ['png', 'jpg', 'jpeg', 'gif', 'webp', 'ico', 'bmp'].includes(ext);
-    const isPdf = file.type === 'application/pdf' || ext === 'pdf';
-    reader.onload = (event) => {
-        const content = event.target.result;
-        openLocalFile(file, content, null, fileHandle);
-    };
-    if (isImg || isPdf) {
-        reader.readAsDataURL(file);
-    } else {
-        reader.readAsText(file);
-    }
+    return new Promise((resolve, reject) => {
+        const reader = new FileReader();
+        const ext = file.name.split('.').pop().toLowerCase();
+        const isImg = (file.type && file.type.startsWith('image/') && ext !== 'svg') || ['png', 'jpg', 'jpeg', 'gif', 'webp', 'ico', 'bmp'].includes(ext);
+        const isPdf = file.type === 'application/pdf' || ext === 'pdf';
+        reader.onload = (event) => {
+            try {
+                const content = event.target.result;
+                openLocalFile(file, content, null, fileHandle);
+                resolve();
+            } catch (err) {
+                reject(err);
+            }
+        };
+        reader.onerror = (err) => reject(err);
+        if (isImg || isPdf) {
+            reader.readAsDataURL(file);
+        } else {
+            reader.readAsText(file);
+        }
+    });
 }
 
 function openLocalFile(file, content, overridePath = null, fileHandle = null, initialDirty = null) {
     const name = file.name;
-    const path = overridePath || ('local://' + Date.now() + '_' + Math.random().toString(36).substring(2, 6) + '_' + name);
+
+    // Deduplicate against any already-open local tab with the same file name
+    for (const existingPath of Object.keys(state.openTabs)) {
+        const existingTab = state.openTabs[existingPath];
+        if (existingTab && existingTab.isLocal && existingTab.name === name) {
+            if (fileHandle) {
+                existingTab.fileHandle = fileHandle;
+                if (existingTab.session && typeof content === 'string') {
+                    existingTab.session.setValue(content);
+                    existingTab.session.getUndoManager().markClean();
+                    existingTab.isDirty = false;
+                    try {
+                        localStorage.setItem('kodeweb_dirty_' + existingPath, content);
+                    } catch (e) {}
+                    updateTabUI(existingPath);
+                }
+                activateTab(existingPath);
+                saveTabsState();
+            } else if (!state.launchedViaFileHandler) {
+                activateTab(existingPath);
+            }
+            return;
+        }
+    }
+
+    const path = overridePath || ('local://' + name);
     
     const ext = name.split('.').pop().toLowerCase();
     const isImg = (file.type ? (file.type.startsWith('image/') && ext !== 'svg') : ['png', 'jpg', 'jpeg', 'gif', 'webp', 'ico', 'bmp'].includes(ext)) && (typeof content === 'string' && content.startsWith('data:image/'));
@@ -306,7 +365,9 @@ function openLocalFile(file, content, overridePath = null, fileHandle = null, in
         fileHandle: fileHandle || null
     };
     
-    localStorage.setItem('kodeweb_dirty_' + path, content);
+    try {
+        localStorage.setItem('kodeweb_dirty_' + path, content);
+    } catch (e) {}
     
     createTabUI(path, name);
     activateTab(path);
