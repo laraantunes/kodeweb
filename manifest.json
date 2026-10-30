@@ -13,5 +13,64 @@
       "type": "image/svg+xml",
       "purpose": "any"
     }
+  ],
+  "launch_handler": {
+    "client_mode": ["focus-existing", "auto"]
+  },
+  "file_handlers": [
+    {
+      "action": "./",
+      "name": "Arquivos do KodeWeb IDE",
+      "launch_type": "single-client",
+      "icons": [
+        {
+          "src": "logo.svg",
+          "sizes": "any",
+          "type": "image/svg+xml"
+        }
+      ],
+      "accept": {
+        "text/plain": [
+          ".txt",
+          ".log",
+          ".env",
+          ".ini",
+          ".conf",
+          ".htaccess",
+          ".diff",
+          ".patch",
+          ".sh",
+          ".bat",
+          ".ps1",
+          ".py",
+          ".rb",
+          ".go",
+          ".rs",
+          ".c",
+          ".cpp",
+          ".h",
+          ".java",
+          ".cs"
+        ],
+        "application/x-httpd-php": [".php"],
+        "text/javascript": [".js", ".mjs", ".cjs", ".jsx", ".ts", ".tsx"],
+        "text/css": [".css", ".scss", ".less"],
+        "text/html": [".html", ".htm"],
+        "application/json": [".json"],
+        "application/sql": [".sql"],
+        "text/markdown": [".md", ".markdown"],
+        "application/xml": [".xml"],
+        "text/yaml": [".yml", ".yaml"],
+        "text/csv": [".csv"],
+        "image/svg+xml": [".svg"],
+        "image/png": [".png"],
+        "image/jpeg": [".jpg", ".jpeg"],
+        "image/gif": [".gif"],
+        "image/webp": [".webp"],
+        "image/x-icon": [".ico"],
+        "image/bmp": [".bmp"],
+        "application/pdf": [".pdf"]
+      }
+    }
   ]
 }

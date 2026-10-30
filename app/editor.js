@@ -109,12 +109,13 @@ function initAceEditor() {
             if (tab.isDirty !== !isClean) {
                 tab.isDirty = !isClean;
                 updateTabUI(state.activeTabPath);
+                if (typeof saveTabsState === 'function') saveTabsState();
             }
             
             // Save dirty state to localStorage
             clearTimeout(dirtySaveTimeout);
             dirtySaveTimeout = setTimeout(() => {
-                if (tab.isDirty) {
+                if (tab.isDirty || tab.isLocal) {
                     localStorage.setItem('kodeweb_dirty_' + tab.path, tab.session.getValue());
                 } else {
                     localStorage.removeItem('kodeweb_dirty_' + tab.path);

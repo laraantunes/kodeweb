@@ -1,4 +1,4 @@
-const CACHE_NAME = 'kodeweb-pwa-cache-v1';
+const CACHE_NAME = 'kodeweb-pwa-cache-v2';
 
 self.addEventListener('install', (e) => {
     self.skipWaiting();

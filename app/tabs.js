@@ -396,7 +396,52 @@ async function saveActiveFile() {
     }
     
     if (tab.isLocal) {
-        // Trigger download
+        if (tab.fileHandle && typeof tab.fileHandle.createWritable === 'function') {
+            try {
+                const writable = await tab.fileHandle.createWritable();
+                await writable.write(content);
+                await writable.close();
+
+                tab.isDirty = false;
+                tab.session.getUndoManager().markClean();
+                updateTabUI(tab.path);
+                localStorage.setItem('kodeweb_dirty_' + tab.path, content);
+                if (typeof saveTabsState === 'function') saveTabsState();
+                showToast("Arquivo local salvo com sucesso!", "success");
+                return;
+            } catch (err) {
+                if (err && err.name === 'AbortError') return;
+                console.warn("Falha ao gravar diretamente no arquivo local, usando alternativa:", err);
+            }
+        }
+
+        if (typeof window.showSaveFilePicker === 'function') {
+            try {
+                const handle = await window.showSaveFilePicker({
+                    suggestedName: tab.name
+                });
+                const writable = await handle.createWritable();
+                await writable.write(content);
+                await writable.close();
+
+                tab.fileHandle = handle;
+                tab.name = handle.name || tab.name;
+                tab.isDirty = false;
+                tab.session.getUndoManager().markClean();
+                const tabEl = document.querySelector(`.tab[data-path="${CSS.escape(tab.path)}"] .tab-title`);
+                if (tabEl) tabEl.textContent = tab.name;
+                updateTabUI(tab.path);
+                updateBreadcrumb(tab.path);
+                localStorage.setItem('kodeweb_dirty_' + tab.path, content);
+                if (typeof saveTabsState === 'function') saveTabsState();
+                showToast("Arquivo local salvo com sucesso!", "success");
+                return;
+            } catch (err) {
+                if (err && err.name === 'AbortError') return;
+            }
+        }
+
+        // Fallback: Trigger browser download
         const blob = new Blob([content], { type: 'text/plain' });
         const url = URL.createObjectURL(blob);
         const a = document.createElement('a');
@@ -410,7 +455,8 @@ async function saveActiveFile() {
         tab.isDirty = false;
         tab.session.getUndoManager().markClean();
         updateTabUI(tab.path);
-        localStorage.removeItem('kodeweb_dirty_' + tab.path);
+        localStorage.setItem('kodeweb_dirty_' + tab.path, content);
+        if (typeof saveTabsState === 'function') saveTabsState();
         showToast("Arquivo baixado com sucesso.", "success");
         return;
     }
@@ -453,16 +499,42 @@ function getAceMode(ext) {
     const modes = {
         'php': 'ace/mode/php',
         'js': 'ace/mode/javascript',
+        'mjs': 'ace/mode/javascript',
+        'cjs': 'ace/mode/javascript',
+        'jsx': 'ace/mode/jsx',
+        'ts': 'ace/mode/typescript',
+        'tsx': 'ace/mode/tsx',
         'css': 'ace/mode/css',
+        'scss': 'ace/mode/scss',
+        'less': 'ace/mode/less',
         'html': 'ace/mode/html',
+        'htm': 'ace/mode/html',
+        'svg': 'ace/mode/svg',
         'json': 'ace/mode/json',
         'sql': 'ace/mode/sql',
         'md': 'ace/mode/markdown',
+        'markdown': 'ace/mode/markdown',
         'txt': 'ace/mode/text',
+        'log': 'ace/mode/text',
+        'csv': 'ace/mode/text',
         'xml': 'ace/mode/xml',
         'yml': 'ace/mode/yaml',
         'yaml': 'ace/mode/yaml',
         'ini': 'ace/mode/ini',
+        'conf': 'ace/mode/ini',
+        'env': 'ace/mode/sh',
+        'sh': 'ace/mode/sh',
+        'bat': 'ace/mode/batchfile',
+        'ps1': 'ace/mode/powershell',
+        'py': 'ace/mode/python',
+        'rb': 'ace/mode/ruby',
+        'go': 'ace/mode/golang',
+        'rs': 'ace/mode/rust',
+        'c': 'ace/mode/c_cpp',
+        'cpp': 'ace/mode/c_cpp',
+        'h': 'ace/mode/c_cpp',
+        'java': 'ace/mode/java',
+        'cs': 'ace/mode/csharp',
         'htaccess': 'ace/mode/apache_conf',
         'diff': 'ace/mode/diff',
         'patch': 'ace/mode/diff'
@@ -491,6 +563,21 @@ function updateBreadcrumb(path) {
     }
     
     if (tabInfo && tabInfo.isNew) {
+        const item = document.createElement('span');
+        item.className = 'breadcrumb-item';
+        item.textContent = tabInfo.name;
+        breadcrumb.appendChild(item);
+    } else if (tabInfo && tabInfo.isLocal) {
+        const localBadge = document.createElement('span');
+        localBadge.className = 'breadcrumb-item';
+        localBadge.textContent = '💻 Arquivo Local';
+        breadcrumb.appendChild(localBadge);
+
+        const separator = document.createElement('span');
+        separator.className = 'breadcrumb-separator';
+        separator.textContent = ' / ';
+        breadcrumb.appendChild(separator);
+
         const item = document.createElement('span');
         item.className = 'breadcrumb-item';
         item.textContent = tabInfo.name;

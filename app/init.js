@@ -9,7 +9,11 @@ document.addEventListener('DOMContentLoaded', () => {
     initLocalFileDrop();
     
     restorePanelsState();
-    restoreTabsState();
+    restoreTabsState().then(() => {
+        if (typeof initFileHandler === 'function') {
+            initFileHandler();
+        }
+    });
 
     // Register Service Worker
     if ('serviceWorker' in navigator) {

@@ -48,7 +48,8 @@ function saveTabsState() {
                 isImage: t.isImage || false,
                 isPdf: t.isPdf || false,
                 isLocal: t.isLocal || false,
-                isNew: t.isNew || false
+                isNew: t.isNew || false,
+                isDirty: t.isDirty || false
             });
         });
         try {
@@ -76,7 +77,7 @@ async function restoreTabsState() {
                 } else if (t.isLocal) {
                     const content = localStorage.getItem('kodeweb_dirty_' + t.path);
                     if (content !== null) {
-                        openLocalFile({ name: t.name, type: 'text/plain' }, content, t.path);
+                        openLocalFile({ name: t.name, type: 'text/plain' }, content, t.path, null, t.isDirty !== false);
                     }
                 } else if (t.isNew) {
                     state.openTabs[t.path] = {
@@ -128,31 +129,114 @@ function initLocalFileDrop() {
         editorWrapper.classList.remove('drag-over');
         
         const dt = e.dataTransfer;
-        if (!dt || !dt.files || dt.files.length === 0) return;
+        if (!dt) return;
+
+        // Prefer File System Access API handles when available so Ctrl+S can save directly to disk
+        if (dt.items && dt.items.length > 0 && typeof dt.items[0].getAsFileSystemHandle === 'function') {
+            const handlePromises = Array.from(dt.items)
+                .filter(item => item.kind === 'file')
+                .map(item => item.getAsFileSystemHandle());
+
+            Promise.all(handlePromises).then(async (handles) => {
+                for (const handle of handles) {
+                    if (handle && handle.kind === 'file') {
+                        await processLocalFileHandle(handle);
+                    }
+                }
+            }).catch(err => {
+                console.error('Erro ao processar arquivo arrastado via FileSystemHandle:', err);
+            });
+            return;
+        }
+
+        if (!dt.files || dt.files.length === 0) return;
         
         Array.from(dt.files).forEach(file => {
-            const reader = new FileReader();
-            const isImg = file.type.startsWith('image/');
-            const isPdf = file.type === 'application/pdf' || file.name.toLowerCase().endsWith('.pdf');
-            reader.onload = (event) => {
-                const content = event.target.result;
-                openLocalFile(file, content);
-            };
-            if (isImg || isPdf) {
-                reader.readAsDataURL(file);
-            } else {
-                reader.readAsText(file);
-            }
+            readAndOpenLocalFile(file, null);
         });
     });
 }
 
-function openLocalFile(file, content, overridePath = null) {
+function initFileHandler() {
+    if ('launchQueue' in window) {
+        window.launchQueue.setConsumer(async (launchParams) => {
+            if (!launchParams || !launchParams.files || launchParams.files.length === 0) {
+                return;
+            }
+            for (const fileHandle of launchParams.files) {
+                try {
+                    if (fileHandle.kind && fileHandle.kind !== 'file') continue;
+                    await processLocalFileHandle(fileHandle);
+                } catch (err) {
+                    console.error('Erro ao abrir arquivo via PWA File Handler:', err);
+                    if (typeof showToast === 'function') {
+                        showToast('Erro ao abrir arquivo local: ' + err.message, 'error');
+                    }
+                }
+            }
+        });
+    }
+}
+
+async function processLocalFileHandle(fileHandle) {
+    // Check if this exact FileSystemFileHandle is already open in a tab
+    for (const existingPath of Object.keys(state.openTabs)) {
+        const existingTab = state.openTabs[existingPath];
+        if (existingTab && existingTab.fileHandle && typeof existingTab.fileHandle.isSameEntry === 'function') {
+            try {
+                if (await existingTab.fileHandle.isSameEntry(fileHandle)) {
+                    activateTab(existingPath);
+                    return;
+                }
+            } catch (e) {}
+        }
+    }
+
+    const file = await fileHandle.getFile();
+
+    // Check if there is a restored local tab with the same name and no fileHandle yet
+    for (const existingPath of Object.keys(state.openTabs)) {
+        const existingTab = state.openTabs[existingPath];
+        if (existingTab && existingTab.isLocal && !existingTab.fileHandle && existingTab.name === file.name && !existingTab.isDirty) {
+            existingTab.fileHandle = fileHandle;
+            if (!existingTab.isImage && !existingTab.isPdf && existingTab.session) {
+                const textContent = await file.text();
+                existingTab.session.setValue(textContent);
+                existingTab.session.getUndoManager().markClean();
+                existingTab.isDirty = false;
+                localStorage.setItem('kodeweb_dirty_' + existingPath, textContent);
+                updateTabUI(existingPath);
+            }
+            activateTab(existingPath);
+            return;
+        }
+    }
+
+    readAndOpenLocalFile(file, fileHandle);
+}
+
+function readAndOpenLocalFile(file, fileHandle = null) {
+    const reader = new FileReader();
+    const ext = file.name.split('.').pop().toLowerCase();
+    const isImg = (file.type && file.type.startsWith('image/') && ext !== 'svg') || ['png', 'jpg', 'jpeg', 'gif', 'webp', 'ico', 'bmp'].includes(ext);
+    const isPdf = file.type === 'application/pdf' || ext === 'pdf';
+    reader.onload = (event) => {
+        const content = event.target.result;
+        openLocalFile(file, content, null, fileHandle);
+    };
+    if (isImg || isPdf) {
+        reader.readAsDataURL(file);
+    } else {
+        reader.readAsText(file);
+    }
+}
+
+function openLocalFile(file, content, overridePath = null, fileHandle = null, initialDirty = null) {
     const name = file.name;
-    const path = overridePath || ('local://' + Date.now() + '_' + name);
+    const path = overridePath || ('local://' + Date.now() + '_' + Math.random().toString(36).substring(2, 6) + '_' + name);
     
     const ext = name.split('.').pop().toLowerCase();
-    const isImg = file.type ? file.type.startsWith('image/') : ['png', 'jpg', 'jpeg', 'gif', 'svg', 'webp', 'ico', 'bmp'].includes(ext);
+    const isImg = (file.type ? (file.type.startsWith('image/') && ext !== 'svg') : ['png', 'jpg', 'jpeg', 'gif', 'webp', 'ico', 'bmp'].includes(ext)) && (typeof content === 'string' && content.startsWith('data:image/'));
     const isPdf = file.type === 'application/pdf' || ext === 'pdf';
     
     if (isImg || isPdf) {
@@ -163,6 +247,7 @@ function openLocalFile(file, content, overridePath = null) {
             isPdf: isPdf,
             isDirty: false,
             isLocal: true,
+            fileHandle: fileHandle || null,
             localDataUrl: content
         };
         createTabUI(path, name);
@@ -175,13 +260,16 @@ function openLocalFile(file, content, overridePath = null) {
     const session = ace.createEditSession(content, mode);
     session.setUndoManager(new ace.UndoManager());
     
+    const isDirty = initialDirty !== null ? initialDirty : !fileHandle;
+
     state.openTabs[path] = {
         path: path,
         name: name,
         session: session,
         isImage: false,
-        isDirty: true, // Local files are always "unsaved" relative to server
-        isLocal: true
+        isDirty: isDirty,
+        isLocal: true,
+        fileHandle: fileHandle || null
     };
     
     localStorage.setItem('kodeweb_dirty_' + path, content);
