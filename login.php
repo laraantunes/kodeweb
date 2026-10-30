@@ -52,11 +52,12 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
     <link rel="stylesheet" href="style.css">
     
     <!-- PWA configuration -->
-    <link rel="manifest" href="manifest.json">
+    <link rel="manifest" href="manifest.json?v=2.7.1">
     <meta name="theme-color" content="#140523">
+    <meta name="mobile-web-app-capable" content="yes">
     <meta name="apple-mobile-web-app-capable" content="yes">
     <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
-    <link rel="apple-touch-icon" href="logo.svg">
+    <link rel="apple-touch-icon" href="icon-192.png">
     <style>
         body {
             display: flex;
@@ -130,9 +131,36 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
     <!-- Register Service Worker in login page -->
     <script>
         if ('serviceWorker' in navigator) {
-            navigator.serviceWorker.register('sw.js')
-                .then(reg => console.log('Service Worker registrado (login):', reg.scope))
+            navigator.serviceWorker.register('sw.js', { updateViaCache: 'none' })
+                .then(reg => {
+                    reg.update();
+                    console.log('Service Worker registrado (login):', reg.scope);
+                })
                 .catch(err => console.error('Erro ao registrar Service Worker (login):', err));
+        }
+
+        // Preserve launched files in IndexedDB if user was redirected to login first
+        if ('launchQueue' in window && 'indexedDB' in window) {
+            window.launchQueue.setConsumer((launchParams) => {
+                if (!launchParams || !launchParams.files || launchParams.files.length === 0) return;
+                const req = indexedDB.open('kodeweb_pwa_db', 1);
+                req.onupgradeneeded = (e) => {
+                    const db = e.target.result;
+                    if (!db.objectStoreNames.contains('pending_files')) {
+                        db.createObjectStore('pending_files', { autoIncrement: true });
+                    }
+                };
+                req.onsuccess = (e) => {
+                    const db = e.target.result;
+                    const tx = db.transaction('pending_files', 'readwrite');
+                    const store = tx.objectStore('pending_files');
+                    launchParams.files.forEach(fileHandle => {
+                        if (!fileHandle.kind || fileHandle.kind === 'file') {
+                            store.add(fileHandle);
+                        }
+                    });
+                };
+            });
         }
     </script>
 </body>

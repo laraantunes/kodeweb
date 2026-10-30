@@ -176,6 +176,40 @@ function initFileHandler() {
             }
         });
     }
+
+    // Consume any pending files queued during login screen redirect
+    if ('indexedDB' in window) {
+        try {
+            const req = indexedDB.open('kodeweb_pwa_db', 1);
+            req.onupgradeneeded = (e) => {
+                const db = e.target.result;
+                if (!db.objectStoreNames.contains('pending_files')) {
+                    db.createObjectStore('pending_files', { autoIncrement: true });
+                }
+            };
+            req.onsuccess = (e) => {
+                const db = e.target.result;
+                if (!db.objectStoreNames.contains('pending_files')) return;
+                const tx = db.transaction('pending_files', 'readwrite');
+                const store = tx.objectStore('pending_files');
+                const getAllReq = store.getAll();
+                getAllReq.onsuccess = async () => {
+                    const handles = getAllReq.result || [];
+                    if (handles.length > 0) {
+                        const clearTx = db.transaction('pending_files', 'readwrite');
+                        clearTx.objectStore('pending_files').clear();
+                        for (const fileHandle of handles) {
+                            try {
+                                await processLocalFileHandle(fileHandle);
+                            } catch (err) {
+                                console.error('Erro ao abrir arquivo pendente pós-login:', err);
+                            }
+                        }
+                    }
+                };
+            };
+        } catch (e) {}
+    }
 }
 
 async function processLocalFileHandle(fileHandle) {

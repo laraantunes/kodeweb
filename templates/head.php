@@ -7,11 +7,12 @@
     <link rel="stylesheet" href="style.css">
     
     <!-- PWA configuration -->
-    <link rel="manifest" href="manifest.json">
+    <link rel="manifest" href="manifest.json?v=<?= urlencode($app_version ?? '2.7.1') ?>">
     <meta name="theme-color" content="#140523">
+    <meta name="mobile-web-app-capable" content="yes">
     <meta name="apple-mobile-web-app-capable" content="yes">
     <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
-    <link rel="apple-touch-icon" href="logo.svg">
+    <link rel="apple-touch-icon" href="icon-192.png">
 
     <!-- Ace Editor Library from CDN -->
     <script src="https://cdnjs.cloudflare.com/ajax/libs/ace/1.32.7/ace.js" referrerpolicy="no-referrer"></script>

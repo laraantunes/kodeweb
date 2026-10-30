@@ -3,13 +3,26 @@
   "short_name": "KodeWeb",
   "description": "Uma IDE completa direto no seu navegador",
   "start_url": "./",
+  "scope": "./",
   "display": "standalone",
   "background_color": "#0b0114",
   "theme_color": "#140523",
   "icons": [
     {
+      "src": "icon-192.png",
+      "sizes": "192x192",
+      "type": "image/png",
+      "purpose": "any"
+    },
+    {
+      "src": "icon-512.png",
+      "sizes": "512x512",
+      "type": "image/png",
+      "purpose": "any"
+    },
+    {
       "src": "logo.svg",
-      "sizes": "any",
+      "sizes": "512x512",
       "type": "image/svg+xml",
       "purpose": "any"
     }
@@ -20,15 +33,7 @@
   "file_handlers": [
     {
       "action": "./",
-      "name": "Arquivos do KodeWeb IDE",
       "launch_type": "single-client",
-      "icons": [
-        {
-          "src": "logo.svg",
-          "sizes": "any",
-          "type": "image/svg+xml"
-        }
-      ],
       "accept": {
         "text/plain": [
           ".txt",

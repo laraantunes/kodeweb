@@ -1,4 +1,4 @@
-const CACHE_NAME = 'kodeweb-pwa-cache-v2';
+const CACHE_NAME = 'kodeweb-pwa-cache-v3';
 
 self.addEventListener('install', (e) => {
     self.skipWaiting();
@@ -21,27 +21,40 @@ self.addEventListener('fetch', (e) => {
     if (e.request.method !== 'GET') {
         return;
     }
-    
+
     const url = new URL(e.request.url);
-    
-    // Ignore API calls and query strings related to actions to avoid broken dynamic data
-    if (url.pathname.includes('/api/') || url.search.includes('action=')) {
+
+    // Ignore cross-origin requests (e.g. CDN scripts) to avoid Tracking Prevention storage blocks
+    if (url.origin !== self.location.origin) {
+        return;
+    }
+
+    // Let navigation requests (index.php, login.php, redirects), API calls, and manifest.json go directly to the network
+    if (
+        e.request.mode === 'navigate' ||
+        url.pathname.endsWith('.php') ||
+        url.pathname.endsWith('/') ||
+        url.pathname.endsWith('manifest.json') ||
+        url.pathname.includes('/api/') ||
+        url.search.includes('action=')
+    ) {
         return;
     }
 
     e.respondWith(
         fetch(e.request)
             .then((response) => {
-                if (response.status === 200) {
+                if (response && response.status === 200 && response.type === 'basic' && !response.redirected) {
                     const responseClone = response.clone();
                     caches.open(CACHE_NAME).then((cache) => {
                         cache.put(e.request, responseClone);
-                    });
+                    }).catch(() => {});
                 }
                 return response;
             })
-            .catch(() => {
-                return caches.match(e.request);
+            .catch(async () => {
+                const cached = await caches.match(e.request);
+                return cached || Response.error();
             })
     );
 });

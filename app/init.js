@@ -17,8 +17,11 @@ document.addEventListener('DOMContentLoaded', () => {
 
     // Register Service Worker
     if ('serviceWorker' in navigator) {
-        navigator.serviceWorker.register('sw.js')
-            .then(reg => console.log('Service Worker registrado com sucesso:', reg.scope))
+        navigator.serviceWorker.register('sw.js', { updateViaCache: 'none' })
+            .then(reg => {
+                reg.update();
+                console.log('Service Worker registrado com sucesso:', reg.scope);
+            })
             .catch(err => console.error('Erro ao registrar Service Worker:', err));
     }
 });
