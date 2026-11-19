@@ -22,7 +22,7 @@ document.addEventListener('DOMContentLoaded', () => {
 
     // Register Service Worker with version cache-busting for CDNs/Cloudflare
     if ('serviceWorker' in navigator) {
-        const swVersion = typeof APP_VERSION !== 'undefined' ? APP_VERSION : 'v2.7.2';
+        const swVersion = typeof APP_VERSION !== 'undefined' ? APP_VERSION : 'v2.7.3';
         navigator.serviceWorker.register('sw.js?v=' + encodeURIComponent(swVersion), { updateViaCache: 'none' })
             .then(reg => {
                 reg.update();

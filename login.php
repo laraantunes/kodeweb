@@ -53,7 +53,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
     <link rel="stylesheet" href="style.css">
     
     <!-- PWA configuration -->
-    <link rel="manifest" href="manifest.json?v=<?= urlencode($app_version ?? 'v2.7.2') ?>">
+    <link rel="manifest" href="manifest.json?v=<?= urlencode($app_version ?? 'v2.7.3') ?>">
     <meta name="theme-color" content="#140523">
     <meta name="mobile-web-app-capable" content="yes">
     <meta name="apple-mobile-web-app-capable" content="yes">
@@ -132,7 +132,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
     <!-- Register Service Worker in login page -->
     <script>
         if ('serviceWorker' in navigator) {
-            navigator.serviceWorker.register('sw.js?v=<?= urlencode($app_version ?? 'v2.7.2') ?>', { updateViaCache: 'none' })
+            navigator.serviceWorker.register('sw.js?v=<?= urlencode($app_version ?? 'v2.7.3') ?>', { updateViaCache: 'none' })
                 .then(reg => {
                     reg.update();
                     console.log('Service Worker registrado (login):', reg.scope);
